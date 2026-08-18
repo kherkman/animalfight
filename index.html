@@ -420,7 +420,7 @@
     <div id="koBanner">K.O.</div>
 
     <!-- 1. INTRO SCREEN -->
-    <div id="introScreen" class="screen-overlay" style="background-image: url('intro.jpg');">
+    <div id="introScreen" class="screen-overlay" style="background-image: url('intro.png');">
         <div class="screen-content intro-actions">
             <button class="btn-intro" onclick="chooseGameMode('1p')">🥊 1 PLAYER (VS CPU)</button>
             <button class="btn-intro" onclick="chooseGameMode('2p')">👥 2 PLAYERS (VERSUS)</button>
@@ -547,7 +547,7 @@
                 <div class="stage-card cursor-p1" id="stageCard1" onclick="selectStageP1(1)">
                     <div class="cursor-badge-container" id="stageBadgeContainer1"></div>
                     <div class="stage-thumb-box">
-                        <img class="stage-thumb-img" id="stageImgPreview1" src="stage1.jpg" onerror="this.style.opacity='0';">
+                        <img class="stage-thumb-img" id="stageImgPreview1" src="stage1.png" onerror="this.style.opacity='0';">
                     </div>
                     <b>Stage 1</b>
                     <div class="stage-sub">Dojo Arena</div>
@@ -555,7 +555,7 @@
                 <div class="stage-card cursor-p2" id="stageCard2" onclick="selectStageP1(2)">
                     <div class="cursor-badge-container" id="stageBadgeContainer2"></div>
                     <div class="stage-thumb-box">
-                        <img class="stage-thumb-img" id="stageImgPreview2" src="stage2.jpg" onerror="this.style.opacity='0';">
+                        <img class="stage-thumb-img" id="stageImgPreview2" src="stage2.png" onerror="this.style.opacity='0';">
                     </div>
                     <b>Stage 2</b>
                     <div class="stage-sub">Cyber City</div>
@@ -563,7 +563,7 @@
                 <div class="stage-card" id="stageCard3" onclick="selectStageP1(3)">
                     <div class="cursor-badge-container" id="stageBadgeContainer3"></div>
                     <div class="stage-thumb-box">
-                        <img class="stage-thumb-img" id="stageImgPreview3" src="stage3.jpg" onerror="this.style.opacity='0';">
+                        <img class="stage-thumb-img" id="stageImgPreview3" src="stage3.png" onerror="this.style.opacity='0';">
                     </div>
                     <b>Stage 3</b>
                     <div class="stage-sub">Sunset Shrine</div>
@@ -682,9 +682,9 @@
     };
 
     const stageData = {
-        1: { name: "Stage 1", bgImg: null, src: "stage1.jpg", music: "stage1.mp3", grad: ['#1c1c38', '#2e2e54', '#424250'] },
-        2: { name: "Stage 2", bgImg: null, src: "stage2.jpg", music: "stage2.mp3", grad: ['#0f2027', '#203a43', '#2c5364'] },
-        3: { name: "Stage 3", bgImg: null, src: "stage3.jpg", music: "stage3.mp3", grad: ['#4b1248', '#f06b6b', '#f7b733'] }
+        1: { name: "Stage 1", bgImg: null, src: "stage1.png", music: "stage1.mp3", grad: ['#1c1c38', '#2e2e54', '#424250'] },
+        2: { name: "Stage 2", bgImg: null, src: "stage2.png", music: "stage2.mp3", grad: ['#0f2027', '#203a43', '#2c5364'] },
+        3: { name: "Stage 3", bgImg: null, src: "stage3.png", music: "stage3.mp3", grad: ['#4b1248', '#f06b6b', '#f7b733'] }
     };
 
     // Game & Ladder Flow States
@@ -799,7 +799,7 @@
                 stageData[sIdx].bgImg = sImg;
                 updateStageThumbnails();
             };
-            sImg.src = `stage${sIdx}.jpg`;
+            sImg.src = `stage${sIdx}.png`;
         }
 
         buildAssetModalUI();
