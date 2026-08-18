@@ -1,0 +1,1906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>2D Competitive Fighting Game</title>
+    <style>
+        * { box-sizing: border-box; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+        body {
+            margin: 0;
+            background: #08080d;
+            color: #eee;
+            font-family: 'Impact', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Arena Wrapper */
+        #arenaContainer {
+            position: relative;
+            width: 95vw;
+            max-width: 860px;
+            height: 400px;
+            box-shadow: 0 10px 35px rgba(0,0,0,0.9);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #333;
+            background: #000;
+            margin-top: 10px;
+        }
+
+        #gameCanvas {
+            background: #111;
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Screen Overlays */
+        .screen-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .screen-content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-height: 100%;
+            overflow-y: auto;
+        }
+
+        /* Transparent Intro Buttons */
+        .intro-actions {
+            margin-top: auto;
+            padding-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .btn-intro {
+            font-family: 'Impact', sans-serif;
+            background: transparent;
+            color: #ffffff;
+            font-size: 20px;
+            letter-spacing: 2px;
+            padding: 8px 28px;
+            border: 2px solid rgba(255, 255, 255, 0.85);
+            border-radius: 25px;
+            cursor: pointer;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.9), 0 0 12px rgba(0,0,0,0.8);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            margin: 4px;
+            transition: transform 0.15s, background 0.2s, border-color 0.2s;
+            min-width: 240px;
+        }
+        .btn-intro:hover {
+            transform: scale(1.05);
+            background: rgba(255, 255, 255, 0.2);
+            border-color: #00bcd4;
+        }
+        .btn-intro-sub {
+            font-size: 14px;
+            padding: 6px 20px;
+            border-color: rgba(255, 255, 255, 0.65);
+        }
+
+        .btn-menu {
+            font-family: 'Impact', sans-serif;
+            background: #ff0055;
+            color: #fff;
+            font-size: 18px;
+            letter-spacing: 2px;
+            padding: 9px 22px;
+            border: 2px solid #fff;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(255, 0, 85, 0.5);
+            margin: 5px;
+            transition: transform 0.15s, background 0.2s;
+            min-width: 220px;
+        }
+        .btn-menu:hover { transform: scale(1.05); background: #ff2a70; }
+        .btn-secondary-menu { background: #2b2b3d; box-shadow: none; border-color: #666; font-size: 13.5px; }
+
+        /* Asset Manager Modal */
+        #assetModal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 16, 0.96);
+            z-index: 20;
+            display: none;
+            flex-direction: column;
+            padding: 14px;
+            font-family: 'Segoe UI', sans-serif;
+            overflow-y: auto;
+        }
+
+        .asset-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 6px;
+        }
+
+        .folder-btn-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        .folder-btn-wrapper input[type="file"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .asset-tabs { display: flex; gap: 8px; margin: 8px 0; justify-content: center; flex-wrap: wrap; }
+        .asset-tab-btn {
+            background: #1c1c28; border: 1px solid #444; color: #bbb; padding: 5px 12px;
+            border-radius: 6px; font-weight: bold; font-size: 11.5px; cursor: pointer;
+        }
+        .asset-tab-btn.active { background: #00bcd4; color: #000; border-color: #00bcd4; }
+
+        .asset-tab-pane { display: none; flex-direction: column; gap: 6px; width: 100%; max-width: 720px; margin: 0 auto; }
+        .asset-tab-pane.active { display: flex; }
+
+        .asset-row {
+            background: #181824; padding: 6px 10px; border-radius: 6px;
+            display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px;
+        }
+        .asset-row input[type="file"] { font-size: 10.5px; max-width: 160px; color: #aaa; }
+
+        /* Character Selection 8-Slot Grid */
+        .char-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            width: 100%;
+            max-width: 820px;
+            margin: 6px 0;
+        }
+
+        .char-card {
+            background: #161622;
+            border: 2px solid #3e3e50;
+            border-radius: 8px;
+            padding: 5px 4px;
+            cursor: pointer;
+            transition: transform 0.15s, border-color 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        .char-card:hover { transform: translateY(-3px); border-color: #ffd700; }
+        
+        .char-card.cursor-p1 { border-color: #00bcd4; box-shadow: 0 0 10px #00bcd4; }
+        .char-card.cursor-p2 { border-color: #ff3838; box-shadow: 0 0 10px #ff3838; }
+        .char-card.cursor-p1.cursor-p2 { border-color: #ffd700; box-shadow: 0 0 12px #ffd700; }
+
+        .cursor-badge-container {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            display: flex;
+            gap: 2px;
+            z-index: 3;
+        }
+        .tag-p1 { background: #00bcd4; color: #000; font-size: 9px; font-weight: bold; padding: 1px 4px; border-radius: 3px; }
+        .tag-p2 { background: #ff3838; color: #fff; font-size: 9px; font-weight: bold; padding: 1px 4px; border-radius: 3px; }
+        .tag-ready { background: #00e676; color: #000; }
+
+        .char-name-label {
+            font-size: 11px;
+            font-weight: bold;
+            color: #fff;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 90px;
+        }
+
+        .char-canvas-preview {
+            width: 58px;
+            height: 74px;
+            background: #1e1e2c;
+            border-radius: 6px;
+            border: 1px solid #444;
+            display: block;
+        }
+        .char-stats { font-family: 'Segoe UI', sans-serif; font-size: 8.5px; color: #bbb; line-height: 1.25; margin-top: 2px; }
+
+        /* Stage Selection Grid */
+        .stage-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            width: 100%;
+            max-width: 720px;
+            margin: 10px 0;
+        }
+
+        .stage-card {
+            background: #161622;
+            border: 2px solid #444;
+            border-radius: 8px;
+            padding: 6px;
+            cursor: pointer;
+            transition: transform 0.15s, border-color 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        .stage-card:hover { transform: scale(1.04); border-color: #ffd700; }
+        .stage-card.cursor-p1 { border-color: #00bcd4; box-shadow: 0 0 12px #00bcd4; }
+        .stage-card.cursor-p2 { border-color: #ff3838; box-shadow: 0 0 12px #ff3838; }
+        .stage-card.cursor-p1.cursor-p2 { border-color: #ffd700; box-shadow: 0 0 14px #ffd700; }
+
+        .stage-thumb-box {
+            width: 100%;
+            height: 84px;
+            border-radius: 6px;
+            border: 1px solid #555;
+            margin-bottom: 4px;
+            background-color: #222;
+            overflow: hidden;
+            position: relative;
+        }
+        .stage-thumb-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .stage-sub { font-size: 10px; color: #aaa; font-family: 'Segoe UI', sans-serif; }
+
+        /* Combat Banners */
+        #koBanner {
+            position: absolute;
+            top: 35%;
+            width: 100%;
+            text-align: center;
+            font-size: 80px;
+            color: #ff1744;
+            text-shadow: 0 0 25px #ff1744, 3px 3px 0 #000;
+            pointer-events: none;
+            display: none;
+            animation: pulse 0.6s infinite alternate;
+            z-index: 5;
+        }
+
+        #fightIntroText {
+            position: absolute;
+            top: 35%;
+            width: 100%;
+            text-align: center;
+            font-size: 72px;
+            color: #ffd700;
+            text-shadow: 0 0 25px #ffd700, 3px 3px 0 #000;
+            pointer-events: none;
+            display: none;
+            z-index: 5;
+        }
+
+        @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.1); } }
+
+        /* Controls Legend */
+        .controls-legend {
+            width: 95vw;
+            max-width: 860px;
+            display: flex;
+            justify-content: space-between;
+            font-family: 'Segoe UI', sans-serif;
+            font-size: 11px;
+            color: #999;
+            margin: 4px 0;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        /* Dual Virtual Joysticks */
+        #dualTouchControls {
+            width: 95vw;
+            max-width: 860px;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin: 6px 0 16px 0;
+            font-family: 'Segoe UI', sans-serif;
+            flex-wrap: wrap;
+        }
+
+        .touch-pad-section {
+            background: #151520;
+            padding: 8px;
+            border-radius: 12px;
+            border: 1px solid #333;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex: 1;
+            min-width: 310px;
+            justify-content: space-around;
+        }
+        .touch-pad-section.p1-pad { border-top: 3px solid #00bcd4; }
+        .touch-pad-section.p2-pad { border-top: 3px solid #ff3838; }
+
+        .joystick-zone {
+            width: 86px;
+            height: 86px;
+            background: radial-gradient(circle, #252535 0%, #12121a 100%);
+            border: 2px solid #444;
+            border-radius: 50%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+        }
+        .p1-pad .joystick-zone { border-color: #00bcd4; }
+        .p2-pad .joystick-zone { border-color: #ff3838; }
+
+        .joystick-knob {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            position: absolute;
+            pointer-events: none;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.6);
+        }
+        .p1-pad .joystick-knob { background: #00bcd4; }
+        .p2-pad .joystick-knob { background: #ff3838; }
+
+        .action-pad {
+            display: grid;
+            grid-template-columns: repeat(2, 52px);
+            grid-template-rows: repeat(2, 40px);
+            gap: 4px;
+        }
+
+        .btn {
+            background: #222230;
+            color: #fff;
+            border: 1.5px solid #444;
+            border-radius: 8px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .btn:active { background: #00bcd4; color: #000; }
+        .p2-pad .btn:active { background: #ff3838; color: #fff; }
+        .btn-def { border-color: #2196f3; color: #90caf9; }
+        .btn-special { border-color: #e91e63; color: #ff80ab; }
+        .btn-kick { border-color: #ff9800; color: #ffb74d; }
+    </style>
+</head>
+<body>
+
+<!-- Arena Container -->
+<div id="arenaContainer">
+    <canvas id="gameCanvas" width="860" height="400"></canvas>
+
+    <div id="fightIntroText">ROUND 1</div>
+    <div id="koBanner">K.O.</div>
+
+    <!-- 1. INTRO SCREEN -->
+    <div id="introScreen" class="screen-overlay" style="background-image: url('intro.jpg');">
+        <div class="screen-content intro-actions">
+            <button class="btn-intro" onclick="chooseGameMode('1p')">🥊 1 PLAYER (VS CPU)</button>
+            <button class="btn-intro" onclick="chooseGameMode('2p')">👥 2 PLAYERS (VERSUS)</button>
+            <button class="btn-intro btn-intro-sub" onclick="openAssetModal()">⚙️ CUSTOM ASSETS</button>
+        </div>
+
+        <!-- In-Menu Custom Asset Manager Panel -->
+        <div id="assetModal">
+            <div class="asset-modal-header">
+                <h3 style="margin:0; color:#00bcd4;">CUSTOM ASSET MANAGER (FIGHTERS 1–8 & STAGES 1–3)</h3>
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    <div class="folder-btn-wrapper">
+                        <button class="btn" style="background:#0288d1; color:#fff;">📁 Load Full Asset Folder</button>
+                        <input type="file" id="folderInput" webkitdirectory directory multiple onchange="handleFolderUpload(event)">
+                    </div>
+                    <button class="btn" style="background:#43a047; color:#fff;" onclick="downloadAllTemplates()">📥 Download Multiple Templates</button>
+                    <button class="btn" style="background:#ff0055; color:#fff;" onclick="closeAssetModal()">✕ DONE</button>
+                </div>
+            </div>
+            
+            <div class="asset-tabs">
+                <button class="asset-tab-btn active" onclick="switchAssetTab('tabChars')">Fighters 1–8</button>
+                <button class="asset-tab-btn" onclick="switchAssetTab('tabStages')">Stages 1–3</button>
+                <button class="asset-tab-btn" onclick="switchAssetTab('tabIntro')">Intro Screen</button>
+            </div>
+
+            <!-- Tab: Fighters 1 to 8 -->
+            <div id="tabChars" class="asset-tab-pane active">
+                <div id="charAssetList"></div>
+            </div>
+
+            <!-- Tab: Stages 1 to 3 -->
+            <div id="tabStages" class="asset-tab-pane">
+                <div id="stageAssetList"></div>
+            </div>
+
+            <!-- Tab: Intro -->
+            <div id="tabIntro" class="asset-tab-pane">
+                <div class="asset-row">
+                    <span>Intro Background Image (JPG/PNG):</span>
+                    <input type="file" accept="image/*" onchange="loadCustomIntroBg(this)">
+                </div>
+                <div class="asset-row">
+                    <span>Intro BGM Music (MP3):</span>
+                    <input type="file" accept="audio/*" onchange="loadCustomIntroBgm(this)">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. CHARACTER SELECTION SCREEN -->
+    <div id="charSelectScreen" class="screen-overlay" style="display:none; background: #0e0e16;">
+        <div class="screen-content">
+            <h2 id="charSelectPrompt" style="font-size:20px; color:#ffd700; margin:0 0 2px 0;">CHOOSE YOUR FIGHTERS</h2>
+            <div style="font-size:11px; color:#aaa; font-family:'Segoe UI'; margin-bottom:4px;">
+                <b>P1:</b> WASD / Left Stick + Attack to Confirm | <b>P2:</b> Arrows / Right Stick + Attack to Confirm
+            </div>
+            
+            <div class="char-grid" id="charGrid">
+                <!-- 8 Character Cards with Dual Badges -->
+                <div class="char-card cursor-p1" id="cardChar1" onclick="selectCharP1(1)">
+                    <div class="cursor-badge-container" id="badgeContainer1"></div>
+                    <canvas class="char-canvas-preview" id="previewCanvas1" width="64" height="80"></canvas>
+                    <div class="char-name-label" id="nameChar1">Striker</div>
+                    <div class="char-stats" id="statsChar1">HP: 100 | SPD: 3.5<br>Punch: 10 | Kick: 15<br>Special: 30 | Def: 85%</div>
+                </div>
+                <div class="char-card cursor-p2" id="cardChar2" onclick="selectCharP1(2)">
+                    <div class="cursor-badge-container" id="badgeContainer2"></div>
+                    <canvas class="char-canvas-preview" id="previewCanvas2" width="64" height="80"></canvas>
+                    <div class="char-name-label" id="nameChar2">Brawler</div>
+                    <div class="char-stats" id="statsChar2">HP: 125 | SPD: 3.0<br>Punch: 12 | Kick: 18<br>Special: 38 | Def: 80%</div>
+                </div>
+                <div class="char-card" id="cardChar3" onclick="selectCharP1(3)">
+                    <div class="cursor-badge-container" id="badgeContainer3"></div>
+                    <canvas class="char-canvas-preview" id="previewCanvas3" width="64" height="80"></canvas>
+                    <div class="char-name-label" id="nameChar3">Ninja</div>
+                    <div class="char-stats" id="statsChar3">HP: 85 | SPD: 4.3<br>Punch: 8 | Kick: 12<br>Special: 24 | Def: 75%</div>
+                </div>
+                <div class="char-card" id="cardChar4" onclick="selectCharP1(4)">
+                    <div class="cursor-badge-container" id="badgeContainer4"></div>
+                    <canvas class="char-canvas-preview" id="previewCanvas4" width="64" height="80"></canvas>
+                    <div class="char-name-label" id="nameChar4">Master</div>
+                    <div class="char-stats" id="statsChar4">HP: 110 | SPD: 3.2<br>Punch: 11 | Kick: 16<br>Special: 34 | Def: 90%</div>
+                </div>
+                <div class="char-card" id="cardChar5" onclick="selectCharP1(5)">
+                    <div class="cursor-badge-container" id="badgeContainer5"></div>
+                    <canvas class="char-canvas-preview" id="previewCanvas5" width="64" height="80"></canvas>
+                    <div class="char-name-label" id="nameChar5">Monk</div>
+                    <div class="char-stats" id="statsChar5">HP: 105 | SPD: 3.6<br>Punch: 10 | Kick: 14<br>Special: 32 | Def: 85%</div>
+                </div>
+                <div class="char-card" id="cardChar6" onclick="selectCharP1(6)">
+                    <div class="cursor-badge-container" id="badgeContainer6"></div>
+                    <canvas class="char-canvas-preview" id="previewCanvas6" width="64" height="80"></canvas>
+                    <div class="char-name-label" id="nameChar6">Assassin</div>
+                    <div class="char-stats" id="statsChar6">HP: 90 | SPD: 4.1<br>Punch: 9 | Kick: 13<br>Special: 28 | Def: 78%</div>
+                </div>
+                <div class="char-card" id="cardChar7" onclick="selectCharP1(7)">
+                    <div class="cursor-badge-container" id="badgeContainer7"></div>
+                    <canvas class="char-canvas-preview" id="previewCanvas7" width="64" height="80"></canvas>
+                    <div class="char-name-label" id="nameChar7">Valkyrie</div>
+                    <div class="char-stats" id="statsChar7">HP: 115 | SPD: 3.4<br>Punch: 11 | Kick: 17<br>Special: 36 | Def: 82%</div>
+                </div>
+                <div class="char-card" id="cardChar8" onclick="selectCharP1(8)">
+                    <div class="cursor-badge-container" id="badgeContainer8"></div>
+                    <canvas class="char-canvas-preview" id="previewCanvas8" width="64" height="80"></canvas>
+                    <div class="char-name-label" id="nameChar8">Titan</div>
+                    <div class="char-stats" id="statsChar8">HP: 140 | SPD: 2.8<br>Punch: 13 | Kick: 19<br>Special: 42 | Def: 88%</div>
+                </div>
+            </div>
+            
+            <button class="btn-menu" id="btnConfirmChar" style="margin-top:2px;" onclick="confirmCharacterSelection()">CONFIRM & PROCEED ➔</button>
+        </div>
+    </div>
+
+    <!-- 3. STAGE SELECTION SCREEN -->
+    <div id="stageSelectScreen" class="screen-overlay" style="display:none; background: #0e0e16;">
+        <div class="screen-content">
+            <h2 id="stageSelectPrompt" style="font-size:20px; color:#ffd700; margin:0 0 2px 0;">CHOOSE BATTLE ARENA</h2>
+            <div style="font-size:11px; color:#aaa; font-family:'Segoe UI'; margin-bottom:6px;">
+                <b>P1:</b> WASD / Left Stick + Attack | <b>P2:</b> Arrows / Right Stick + Attack
+            </div>
+
+            <div class="stage-grid">
+                <div class="stage-card cursor-p1" id="stageCard1" onclick="selectStageP1(1)">
+                    <div class="cursor-badge-container" id="stageBadgeContainer1"></div>
+                    <div class="stage-thumb-box">
+                        <img class="stage-thumb-img" id="stageImgPreview1" src="stage1.jpg" onerror="this.style.opacity='0';">
+                    </div>
+                    <b>Stage 1</b>
+                    <div class="stage-sub">Dojo Arena</div>
+                </div>
+                <div class="stage-card cursor-p2" id="stageCard2" onclick="selectStageP1(2)">
+                    <div class="cursor-badge-container" id="stageBadgeContainer2"></div>
+                    <div class="stage-thumb-box">
+                        <img class="stage-thumb-img" id="stageImgPreview2" src="stage2.jpg" onerror="this.style.opacity='0';">
+                    </div>
+                    <b>Stage 2</b>
+                    <div class="stage-sub">Cyber City</div>
+                </div>
+                <div class="stage-card" id="stageCard3" onclick="selectStageP1(3)">
+                    <div class="cursor-badge-container" id="stageBadgeContainer3"></div>
+                    <div class="stage-thumb-box">
+                        <img class="stage-thumb-img" id="stageImgPreview3" src="stage3.jpg" onerror="this.style.opacity='0';">
+                    </div>
+                    <b>Stage 3</b>
+                    <div class="stage-sub">Sunset Shrine</div>
+                </div>
+            </div>
+            <button class="btn-menu" id="btnConfirmStage" onclick="confirmStageSelection()">⚔️ FIGHT!</button>
+        </div>
+    </div>
+
+    <!-- 4. WINNER OVERLAY & LADDER PROGRESSION -->
+    <div id="winnerOverlay" class="screen-overlay" style="display:none; background: rgba(0,0,0,0.85);">
+        <div class="screen-content">
+            <h1 id="winnerHeading" style="font-size:48px; color:#ff1744; margin:0; text-shadow:0 0 20px #ff1744;">DECISIVE VICTORY</h1>
+            <div id="winnerTitle" style="font-size:28px; color:#ffd700; margin:8px 0 16px 0;">PLAYER 1 WINS</div>
+            <div id="ladderStatusText" style="font-family:'Segoe UI'; font-size:14px; color:#00bcd4; margin-bottom:12px;"></div>
+            
+            <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;" id="winnerButtonsContainer">
+                <!-- Dynamically populated buttons -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Controls Legend -->
+<div class="controls-legend">
+    <span><b>P1:</b> WASD / Left Stick | <b>R:</b> Defend | <b>F:</b> Punch | <b>T:</b> Kick | <b>Y:</b> Special</span>
+    <span><b>P2:</b> Arrows / Right Stick | <b>I:</b> Defend | <b>K:</b> Punch | <b>O:</b> Kick | <b>P:</b> Special</span>
+</div>
+
+<!-- Dual Touch Controllers -->
+<div id="dualTouchControls">
+    <div class="touch-pad-section p1-pad">
+        <div class="joystick-zone" id="joystickZoneP1"><div class="joystick-knob" id="joystickKnobP1"></div></div>
+        <div class="action-pad">
+            <div class="btn btn-def" id="btnP1Def">🛡️ R</div>
+            <div class="btn" id="btnP1Punch">👊 F</div>
+            <div class="btn btn-kick" id="btnP1Kick">🦵 T</div>
+            <div class="btn btn-special" id="btnP1Special">⚡ Y</div>
+        </div>
+    </div>
+    <div class="touch-pad-section p2-pad">
+        <div class="joystick-zone" id="joystickZoneP2"><div class="joystick-knob" id="joystickKnobP2"></div></div>
+        <div class="action-pad">
+            <div class="btn btn-def" id="btnP2Def">🛡️ I</div>
+            <div class="btn" id="btnP2Punch">👊 K</div>
+            <div class="btn btn-kick" id="btnP2Kick">🦵 O</div>
+            <div class="btn btn-special" id="btnP2Special">⚡ P</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Audio Engine: Seamless BGM Playing without unwanted stops
+    let audioCtx = null;
+    function getAudioContext() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        return audioCtx;
+    }
+
+    const bgmPlayer = new Audio();
+    bgmPlayer.loop = true;
+    bgmPlayer.volume = 0.45;
+
+    let currentIntroMusic = 'intro.mp3';
+
+    function playBGM(fileUrl) {
+        if (!fileUrl) return;
+        try {
+            const resolvedTarget = new URL(fileUrl, window.location.href).href;
+            if (bgmPlayer.src === resolvedTarget && !bgmPlayer.paused) {
+                return; // Seamless continuation without interruption
+            }
+            if (bgmPlayer.src === resolvedTarget && bgmPlayer.paused) {
+                bgmPlayer.play().catch(() => {});
+                return;
+            }
+            bgmPlayer.src = resolvedTarget;
+            bgmPlayer.play().catch(() => {});
+        } catch (e) {
+            if (bgmPlayer.src !== fileUrl) {
+                bgmPlayer.src = fileUrl;
+            }
+            bgmPlayer.play().catch(() => {});
+        }
+    }
+
+    function playIntroBGM() {
+        playBGM(currentIntroMusic);
+    }
+
+    // Ensure audio starts on first user interaction in Intro Menu
+    function handleInitialUserGesture() {
+        getAudioContext();
+        if (gameState === 'menu' && bgmPlayer.paused) {
+            playIntroBGM();
+        }
+    }
+    window.addEventListener('click', handleInitialUserGesture);
+    window.addEventListener('keydown', handleInitialUserGesture);
+    window.addEventListener('touchstart', handleInitialUserGesture);
+
+    // 8 Preloaded Characters
+    const characterData = {
+        1: { name: "Striker", color: '#00bcd4', stats: { maxHp: 100, speed: 3.5, jumpForce: 11.0, punchDmg: 10, kickDmg: 15, specialDmg: 30, defReduction: 0.85, specialCooldown: 3.0 }, img: null, spriteCanvas: null, config: null, audioBuf: null, idleFrame: 0, idleTimer: 0 },
+        2: { name: "Brawler", color: '#ff3838', stats: { maxHp: 125, speed: 3.0, jumpForce: 10.5, punchDmg: 12, kickDmg: 18, specialDmg: 38, defReduction: 0.80, specialCooldown: 3.5 }, img: null, spriteCanvas: null, config: null, audioBuf: null, idleFrame: 0, idleTimer: 0 },
+        3: { name: "Ninja", color: '#00e676', stats: { maxHp: 85, speed: 4.3, jumpForce: 12.0, punchDmg: 8, kickDmg: 12, specialDmg: 24, defReduction: 0.75, specialCooldown: 2.5 }, img: null, spriteCanvas: null, config: null, audioBuf: null, idleFrame: 0, idleTimer: 0 },
+        4: { name: "Master", color: '#d500f9', stats: { maxHp: 110, speed: 3.2, jumpForce: 11.2, punchDmg: 11, kickDmg: 16, specialDmg: 34, defReduction: 0.90, specialCooldown: 3.2 }, img: null, spriteCanvas: null, config: null, audioBuf: null, idleFrame: 0, idleTimer: 0 },
+        5: { name: "Monk", color: '#ffb300', stats: { maxHp: 105, speed: 3.6, jumpForce: 11.4, punchDmg: 10, kickDmg: 14, specialDmg: 32, defReduction: 0.85, specialCooldown: 2.8 }, img: null, spriteCanvas: null, config: null, audioBuf: null, idleFrame: 0, idleTimer: 0 },
+        6: { name: "Assassin", color: '#78909c', stats: { maxHp: 90, speed: 4.1, jumpForce: 11.8, punchDmg: 9, kickDmg: 13, specialDmg: 28, defReduction: 0.78, specialCooldown: 2.6 }, img: null, spriteCanvas: null, config: null, audioBuf: null, idleFrame: 0, idleTimer: 0 },
+        7: { name: "Valkyrie", color: '#e91e63', stats: { maxHp: 115, speed: 3.4, jumpForce: 11.0, punchDmg: 11, kickDmg: 17, specialDmg: 36, defReduction: 0.82, specialCooldown: 3.3 }, img: null, spriteCanvas: null, config: null, audioBuf: null, idleFrame: 0, idleTimer: 0 },
+        8: { name: "Titan", color: '#3f51b5', stats: { maxHp: 140, speed: 2.8, jumpForce: 10.0, punchDmg: 13, kickDmg: 19, specialDmg: 42, defReduction: 0.88, specialCooldown: 3.8 }, img: null, spriteCanvas: null, config: null, audioBuf: null, idleFrame: 0, idleTimer: 0 }
+    };
+
+    const stageData = {
+        1: { name: "Stage 1", bgImg: null, src: "stage1.jpg", music: "stage1.mp3", grad: ['#1c1c38', '#2e2e54', '#424250'] },
+        2: { name: "Stage 2", bgImg: null, src: "stage2.jpg", music: "stage2.mp3", grad: ['#0f2027', '#203a43', '#2c5364'] },
+        3: { name: "Stage 3", bgImg: null, src: "stage3.jpg", music: "stage3.mp3", grad: ['#4b1248', '#f06b6b', '#f7b733'] }
+    };
+
+    // Game & Ladder Flow States
+    let selectedMode = '1p';
+    let p1CharId = 1, p2CharId = 2;
+    let p1Confirmed = false, p2Confirmed = false;
+
+    let p1StageId = 1, p2StageId = 2;
+    let p1StageConfirmed = false, p2StageConfirmed = false;
+    let selectedStageId = 1;
+
+    // 1-Player Campaign Ladder
+    let arcadeLadder = [];
+    let currentLadderIndex = 0;
+
+    let p1NavCooldown = 0, p2NavCooldown = 0;
+    let roundTimer = 99;
+    let timerAccumulator = 0;
+    let gameState = 'menu';
+    let introTimer = 0;
+    let koTimer = 0;
+    let pendingWinnerId = null;
+    let screenShake = 0;
+
+    const hitSparks = [];
+    const bloodParticles = [];
+
+    // Fighter Objects
+    function makeFighter(id, x, facingLeft, color) {
+        return {
+            id, name: `P${id}`, characterName: 'Fighter', x, y: 320, groundY: 320, vx: 0, vy: 0,
+            facingLeft, themeColor: color, hp: 100, maxHp: 100, displayedHp: 100,
+            speed: 3.5, jumpForce: 11.0, punchDmg: 10, kickDmg: 15, specialDmg: 30,
+            defReduction: 0.85, specialCooldown: 3.0, specialTimer: 0,
+            action: 'idle', frameIndex: 0, animTimer: 0, isGrounded: true, isDead: false,
+            hitStun: 0, hasHit: false, rawImg: null, spriteCanvas: null, config: null, audioBuffer: null
+        };
+    }
+
+    const p1 = makeFighter(1, 230, false, '#00bcd4');
+    const p2 = makeFighter(2, 630, true, '#ff3838');
+
+    function applySelectedCharacter(fighter, charId) {
+        const c = characterData[charId];
+        const s = c.config?.stats || c.stats;
+        fighter.characterName = c.config?.name || c.name || `Character ${charId}`;
+        fighter.name = (fighter.id === 1 ? 'P1' : (selectedMode === '1p' ? 'CPU' : 'P2')) + `: ${fighter.characterName.toUpperCase()}`;
+        fighter.maxHp = s.maxHp;
+        fighter.hp = s.maxHp;
+        fighter.displayedHp = s.maxHp;
+        fighter.speed = s.speed;
+        fighter.jumpForce = s.jumpForce;
+        fighter.punchDmg = s.punchDmg;
+        fighter.kickDmg = s.kickDmg;
+        fighter.specialDmg = s.specialDmg;
+        fighter.defReduction = s.defReduction > 1 ? s.defReduction / 100 : s.defReduction;
+        fighter.specialCooldown = s.specialCooldown;
+        fighter.rawImg = c.img;
+        fighter.spriteCanvas = c.spriteCanvas;
+        fighter.config = c.config;
+        fighter.audioBuffer = c.audioBuf;
+        fighter.themeColor = c.color;
+    }
+
+    // Audio SFX Playback
+    function playSoundSlice(f, soundKey) {
+        if (!f.audioBuffer || !f.config?.sounds?.[soundKey]) return;
+        const snd = f.config.sounds[soundKey];
+        if (snd.end <= snd.start) return;
+        try {
+            const actx = getAudioContext();
+            const src = actx.createBufferSource();
+            src.buffer = f.audioBuffer;
+            src.connect(actx.destination);
+            src.start(0, snd.start, Math.max(0.05, snd.end - snd.start));
+        } catch (e) {}
+    }
+
+    // Preload Default Assets
+    function preloadDefaultAssets() {
+        for (let i = 1; i <= 8; i++) {
+            const charIdx = i;
+            const cImg = new Image();
+            cImg.onload = () => {
+                characterData[charIdx].img = cImg;
+                processCharSprite(charIdx);
+            };
+            cImg.src = `character${charIdx}.png`;
+
+            const s = document.createElement('script');
+            s.src = `character${charIdx}.js`;
+            s.onload = () => {
+                if (window.getCharacterSpriteConfig) {
+                    characterData[charIdx].config = window.getCharacterSpriteConfig();
+                    if (characterData[charIdx].config.name) {
+                        characterData[charIdx].name = characterData[charIdx].config.name;
+                    }
+                    updateCardStatsText(charIdx);
+                }
+            };
+            document.head.appendChild(s);
+
+            fetch(`character${charIdx}.mp3`).then(r => r.ok ? r.arrayBuffer() : null).then(ab => {
+                if (ab) getAudioContext().decodeAudioData(ab, buf => { characterData[charIdx].audioBuf = buf; });
+            }).catch(() => {});
+        }
+
+        for (let i = 1; i <= 3; i++) {
+            const sIdx = i;
+            const sImg = new Image();
+            sImg.onload = () => {
+                stageData[sIdx].bgImg = sImg;
+                updateStageThumbnails();
+            };
+            sImg.src = `stage${sIdx}.jpg`;
+        }
+
+        buildAssetModalUI();
+    }
+    window.addEventListener('DOMContentLoaded', preloadDefaultAssets);
+
+    function updateCardStatsText(id) {
+        const c = characterData[id];
+        const s = c.config?.stats || c.stats;
+        const charName = c.config?.name || c.name;
+        
+        const nameEl = document.getElementById(`nameChar${id}`);
+        if (nameEl) nameEl.textContent = charName;
+
+        const statsEl = document.getElementById(`statsChar${id}`);
+        if (statsEl) {
+            statsEl.innerHTML = `HP: ${s.maxHp} | SPD: ${s.speed}<br>Punch: ${s.punchDmg} | Kick: ${s.kickDmg}<br>Special: ${s.specialDmg} | Def: ${Math.round(s.defReduction > 1 ? s.defReduction : s.defReduction * 100)}%`;
+        }
+    }
+
+    // Top-Aligned Character Idle Preview Loop
+    function renderCharSelectPreviews(dt) {
+        for (let i = 1; i <= 8; i++) {
+            const c = characterData[i];
+            const pCanvas = document.getElementById(`previewCanvas${i}`);
+            if (!pCanvas) continue;
+            const pCtx = pCanvas.getContext('2d');
+
+            const anim = c.config?.animations?.idle;
+            const fps = anim?.fps || 6;
+            const frames = anim?.frames || [];
+            const frameCount = frames.length || 4;
+
+            c.idleTimer += dt;
+            if (c.idleTimer >= (1 / fps)) {
+                c.idleTimer = 0;
+                c.idleFrame = (c.idleFrame + 1) % frameCount;
+            }
+
+            pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+
+            if (c.spriteCanvas && frames.length > 0) {
+                const f = frames[c.idleFrame] || frames[0];
+                const scale = Math.min(0.95, (pCanvas.width - 4) / f.w, (pCanvas.height - 6) / f.h);
+                const drawW = f.w * scale;
+                const drawH = f.h * scale;
+                const drawX = (pCanvas.width - drawW) / 2;
+                const drawY = 4;
+                pCtx.drawImage(c.spriteCanvas, f.x, f.y, f.w, f.h, drawX, drawY, drawW, drawH);
+            } else {
+                const bob = Math.sin(Date.now() / 150) * 2;
+                pCtx.save();
+                pCtx.translate(pCanvas.width / 2, 22);
+                pCtx.strokeStyle = c.color;
+                pCtx.fillStyle = c.color;
+                pCtx.lineWidth = 3;
+                pCtx.lineCap = 'round';
+
+                pCtx.beginPath(); pCtx.arc(0, -10 + bob, 6.5, 0, Math.PI * 2); pCtx.fill();
+                pCtx.beginPath(); pCtx.moveTo(0, -3 + bob); pCtx.lineTo(0, 20); pCtx.stroke();
+                pCtx.beginPath(); pCtx.moveTo(0, 20); pCtx.lineTo(-7, 40); pCtx.moveTo(0, 20); pCtx.lineTo(7, 40); pCtx.stroke();
+                pCtx.beginPath(); pCtx.moveTo(0, 6 + bob); pCtx.lineTo(-9, 18); pCtx.moveTo(0, 6 + bob); pCtx.lineTo(9, 18); pCtx.stroke();
+                pCtx.restore();
+            }
+        }
+    }
+
+    function updateStageThumbnails() {
+        for (let i = 1; i <= 3; i++) {
+            const imgEl = document.getElementById(`stageImgPreview${i}`);
+            if (!imgEl) continue;
+            const st = stageData[i];
+            imgEl.src = (st.bgImg && st.bgImg.src) ? st.bgImg.src : st.src;
+            imgEl.style.opacity = '1';
+        }
+    }
+
+    // Custom Asset Manager Modal
+    function buildAssetModalUI() {
+        const charList = document.getElementById('charAssetList');
+        charList.innerHTML = '';
+        for (let i = 1; i <= 8; i++) {
+            const row = document.createElement('div');
+            row.className = 'asset-row';
+            row.innerHTML = `
+                <b>Fighter ${i} (${characterData[i].name}):</b>
+                <span>PNG: <input type="file" accept="image/png" onchange="loadCustomCharPng(${i}, this)"></span>
+                <span>JS: <input type="file" accept=".js" onchange="loadCustomCharJs(${i}, this)"></span>
+                <span>MP3: <input type="file" accept="audio/*" onchange="loadCustomCharAudio(${i}, this)"></span>
+            `;
+            charList.appendChild(row);
+        }
+
+        const stageList = document.getElementById('stageAssetList');
+        stageList.innerHTML = '';
+        for (let i = 1; i <= 3; i++) {
+            const row = document.createElement('div');
+            row.className = 'asset-row';
+            row.innerHTML = `
+                <b>Stage ${i}:</b>
+                <span>BG Image: <input type="file" accept="image/*" onchange="loadCustomStageBg(${i}, this)"></span>
+                <span>BGM Music: <input type="file" accept="audio/*" onchange="loadCustomStageMusic(${i}, this)"></span>
+            `;
+            stageList.appendChild(row);
+        }
+    }
+
+    function openAssetModal() { document.getElementById('assetModal').style.display = 'flex'; }
+    function closeAssetModal() { document.getElementById('assetModal').style.display = 'none'; }
+    function switchAssetTab(tabId) {
+        document.querySelectorAll('.asset-tab-btn').forEach((b, idx) => {
+            b.classList.toggle('active', (idx === 0 && tabId === 'tabChars') || (idx === 1 && tabId === 'tabStages') || (idx === 2 && tabId === 'tabIntro'));
+        });
+        document.querySelectorAll('.asset-tab-pane').forEach(p => p.classList.toggle('active', p.id === tabId));
+    }
+
+    // Folder Batch Loader
+    function handleFolderUpload(event) {
+        const files = Array.from(event.target.files);
+        if (!files.length) return;
+        let count = 0;
+
+        files.forEach(file => {
+            const name = file.name.toLowerCase();
+            for (let i = 1; i <= 8; i++) {
+                if (name === `character${i}.png` || name === `character${i}.jpg` || name === `character${i}.jpeg`) {
+                    readImageFile(file, img => { characterData[i].img = img; processCharSprite(i); });
+                    count++;
+                } else if (name === `character${i}.js`) {
+                    readScriptFile(file, cfg => {
+                        characterData[i].config = cfg;
+                        if (cfg.name) characterData[i].name = cfg.name;
+                        updateCardStatsText(i);
+                    });
+                    count++;
+                } else if (name === `character${i}.mp3` || name === `character${i}.wav` || name === `character${i}.ogg`) {
+                    readAudioFile(file, buf => { characterData[i].audioBuf = buf; });
+                    count++;
+                }
+            }
+
+            for (let i = 1; i <= 3; i++) {
+                if (name === `stage${i}.jpg` || name === `stage${i}.png` || name === `stage${i}.jpeg`) {
+                    readImageFile(file, img => { stageData[i].bgImg = img; updateStageThumbnails(); });
+                    count++;
+                } else if (name === `stage${i}.mp3` || name === `stage${i}.wav` || name === `stage${i}.ogg`) {
+                    stageData[i].music = URL.createObjectURL(file);
+                    count++;
+                }
+            }
+
+            if (name === 'intro.jpg' || name === 'intro.png' || name === 'intro.jpeg') {
+                document.getElementById('introScreen').style.backgroundImage = `url('${URL.createObjectURL(file)}')`;
+                count++;
+            } else if (name === 'intro.mp3' || name === 'intro.wav' || name === 'intro.ogg') {
+                currentIntroMusic = URL.createObjectURL(file);
+                playIntroBGM();
+                count++;
+            }
+        });
+
+        alert(`Asset Folder Loaded: Successfully mapped ${count} default files!`);
+    }
+
+    function readImageFile(file, cb) {
+        const r = new FileReader();
+        r.onload = e => { const img = new Image(); img.onload = () => cb(img); img.src = e.target.result; };
+        r.readAsDataURL(file);
+    }
+    function readScriptFile(file, cb) {
+        const r = new FileReader();
+        r.onload = e => {
+            const s = document.createElement('script');
+            s.text = e.target.result;
+            document.body.appendChild(s);
+            if (window.getCharacterSpriteConfig) cb(window.getCharacterSpriteConfig());
+        };
+        r.readAsText(file);
+    }
+    function readAudioFile(file, cb) {
+        const r = new FileReader();
+        r.onload = e => { getAudioContext().decodeAudioData(e.target.result, cb); };
+        r.readAsArrayBuffer(file);
+    }
+
+    function loadCustomCharPng(id, input) { if (input.files[0]) readImageFile(input.files[0], img => { characterData[id].img = img; processCharSprite(id); }); }
+    function loadCustomCharJs(id, input) { if (input.files[0]) readScriptFile(input.files[0], cfg => { characterData[id].config = cfg; if (cfg.name) characterData[id].name = cfg.name; updateCardStatsText(id); }); }
+    function loadCustomCharAudio(id, input) { if (input.files[0]) readAudioFile(input.files[0], buf => { characterData[id].audioBuf = buf; }); }
+    function loadCustomStageBg(id, input) { if (input.files[0]) readImageFile(input.files[0], img => { stageData[id].bgImg = img; updateStageThumbnails(); }); }
+    function loadCustomStageMusic(id, input) { if (input.files[0]) stageData[id].music = URL.createObjectURL(input.files[0]); }
+    function loadCustomIntroBg(input) { if (input.files[0]) document.getElementById('introScreen').style.backgroundImage = `url('${URL.createObjectURL(input.files[0])}')`; }
+    function loadCustomIntroBgm(input) { if (input.files[0]) { currentIntroMusic = URL.createObjectURL(input.files[0]); playIntroBGM(); } }
+
+    function processCharSprite(id) {
+        const c = characterData[id];
+        if (!c.img) return;
+        const cv = document.createElement('canvas');
+        cv.width = c.img.width; cv.height = c.img.height;
+        const cCtx = cv.getContext('2d');
+        cCtx.drawImage(c.img, 0, 0);
+
+        const imgData = cCtx.getImageData(0, 0, cv.width, cv.height);
+        const data = imgData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            if (data[i] > 235 && data[i+1] > 235 && data[i+2] > 235) data[i + 3] = 0;
+        }
+        cCtx.putImageData(imgData, 0, 0);
+        c.spriteCanvas = cv;
+    }
+
+    // Screen Transitions & Navigation Flow
+    function chooseGameMode(mode) {
+        getAudioContext();
+        selectedMode = mode;
+        p1CharId = 1;
+        p2CharId = 2;
+        p1Confirmed = false;
+        p2Confirmed = false;
+
+        document.getElementById('introScreen').style.display = 'none';
+        document.getElementById('charSelectScreen').style.display = 'flex';
+        gameState = 'char_select';
+        updateCharCardsUI();
+        playIntroBGM(); // Seamlessly continue intro music in Character Select
+    }
+
+    function moveGrid(currentId, dir) {
+        let col = (currentId - 1) % 4;
+        let row = Math.floor((currentId - 1) / 4);
+        if (dir === 'left') col = (col - 1 + 4) % 4;
+        if (dir === 'right') col = (col + 1) % 4;
+        if (dir === 'up') row = (row - 1 + 2) % 2;
+        if (dir === 'down') row = (row + 1) % 2;
+        return (row * 4 + col) + 1;
+    }
+
+    function updateCharSelectionInput(dt) {
+        p1NavCooldown -= dt;
+        p2NavCooldown -= dt;
+
+        // Player 1 Joystick / Key Navigation
+        if (!p1Confirmed && p1NavCooldown <= 0) {
+            if (keys['KeyA']) { p1CharId = moveGrid(p1CharId, 'left'); p1NavCooldown = 0.18; updateCharCardsUI(); }
+            else if (keys['KeyD']) { p1CharId = moveGrid(p1CharId, 'right'); p1NavCooldown = 0.18; updateCharCardsUI(); }
+            else if (keys['KeyW']) { p1CharId = moveGrid(p1CharId, 'up'); p1NavCooldown = 0.18; updateCharCardsUI(); }
+            else if (keys['KeyS']) { p1CharId = moveGrid(p1CharId, 'down'); p1NavCooldown = 0.18; updateCharCardsUI(); }
+        }
+
+        // Player 2 Joystick / Key Navigation (2-Player Mode)
+        if (selectedMode === '2p' && !p2Confirmed && p2NavCooldown <= 0) {
+            if (keys['ArrowLeft']) { p2CharId = moveGrid(p2CharId, 'left'); p2NavCooldown = 0.18; updateCharCardsUI(); }
+            else if (keys['ArrowRight']) { p2CharId = moveGrid(p2CharId, 'right'); p2NavCooldown = 0.18; updateCharCardsUI(); }
+            else if (keys['ArrowUp']) { p2CharId = moveGrid(p2CharId, 'up'); p2NavCooldown = 0.18; updateCharCardsUI(); }
+            else if (keys['ArrowDown']) { p2CharId = moveGrid(p2CharId, 'down'); p2NavCooldown = 0.18; updateCharCardsUI(); }
+        }
+    }
+
+    function selectCharP1(id) {
+        p1CharId = id;
+        updateCharCardsUI();
+    }
+
+    function updateCharCardsUI() {
+        for (let i = 1; i <= 8; i++) {
+            const card = document.getElementById(`cardChar${i}`);
+            const badgeContainer = document.getElementById(`badgeContainer${i}`);
+            card.classList.remove('cursor-p1', 'cursor-p2');
+            badgeContainer.innerHTML = '';
+
+            if (i === p1CharId) {
+                card.classList.add('cursor-p1');
+                const b1 = document.createElement('span');
+                b1.className = `tag-p1 ${p1Confirmed ? 'tag-ready' : ''}`;
+                b1.textContent = p1Confirmed ? 'P1 READY' : 'P1';
+                badgeContainer.appendChild(b1);
+            }
+
+            if (i === p2CharId && selectedMode === '2p') {
+                card.classList.add('cursor-p2');
+                const b2 = document.createElement('span');
+                b2.className = `tag-p2 ${p2Confirmed ? 'tag-ready' : ''}`;
+                b2.textContent = p2Confirmed ? 'P2 READY' : 'P2';
+                badgeContainer.appendChild(b2);
+            }
+        }
+    }
+
+    function checkBothCharactersConfirmed() {
+        if (selectedMode === '1p') {
+            if (p1Confirmed) {
+                // Initialize 1-Player Campaign: Build ladder of all other 7 characters
+                arcadeLadder = [];
+                for (let i = 1; i <= 8; i++) {
+                    if (i !== p1CharId) arcadeLadder.push(i);
+                }
+                currentLadderIndex = 0;
+                p2CharId = arcadeLadder[0];
+                transitionToStageSelect();
+            }
+        } else if (selectedMode === '2p') {
+            if (p1Confirmed && p2Confirmed) {
+                transitionToStageSelect();
+            }
+        }
+    }
+
+    function confirmCharacterSelection() {
+        p1Confirmed = true;
+        if (selectedMode === '2p') p2Confirmed = true;
+        updateCharCardsUI();
+        checkBothCharactersConfirmed();
+    }
+
+    function transitionToStageSelect() {
+        setTimeout(() => {
+            document.getElementById('charSelectScreen').style.display = 'none';
+            document.getElementById('stageSelectScreen').style.display = 'flex';
+            gameState = 'stage_select';
+            
+            p1StageId = 1;
+            p2StageId = 2;
+            p1StageConfirmed = false;
+            p2StageConfirmed = false;
+
+            updateStageCardsUI();
+            updateStageThumbnails();
+            playIntroBGM(); // Seamlessly continue intro music in Stage Select
+        }, 250);
+    }
+
+    // Stage Selection Navigation (Dual Controls & Tiebreaker)
+    function updateStageSelectionInput(dt) {
+        p1NavCooldown -= dt;
+        p2NavCooldown -= dt;
+
+        if (!p1StageConfirmed && p1NavCooldown <= 0) {
+            if (keys['KeyA']) { p1StageId = (p1StageId === 1 ? 3 : p1StageId - 1); p1NavCooldown = 0.18; updateStageCardsUI(); }
+            else if (keys['KeyD']) { p1StageId = (p1StageId === 3 ? 1 : p1StageId + 1); p1NavCooldown = 0.18; updateStageCardsUI(); }
+        }
+
+        if (selectedMode === '2p' && !p2StageConfirmed && p2NavCooldown <= 0) {
+            if (keys['ArrowLeft']) { p2StageId = (p2StageId === 1 ? 3 : p2StageId - 1); p2NavCooldown = 0.18; updateStageCardsUI(); }
+            else if (keys['ArrowRight']) { p2StageId = (p2StageId === 3 ? 1 : p2StageId + 1); p2NavCooldown = 0.18; updateStageCardsUI(); }
+        }
+    }
+
+    function selectStageP1(id) {
+        p1StageId = id;
+        updateStageCardsUI();
+    }
+
+    function updateStageCardsUI() {
+        for (let i = 1; i <= 3; i++) {
+            const card = document.getElementById(`stageCard${i}`);
+            const badgeContainer = document.getElementById(`stageBadgeContainer${i}`);
+            card.classList.remove('cursor-p1', 'cursor-p2', 'selected');
+            badgeContainer.innerHTML = '';
+
+            if (i === p1StageId) {
+                card.classList.add('cursor-p1');
+                const b1 = document.createElement('span');
+                b1.className = `tag-p1 ${p1StageConfirmed ? 'tag-ready' : ''}`;
+                b1.textContent = p1StageConfirmed ? 'P1 READY' : 'P1';
+                badgeContainer.appendChild(b1);
+            }
+
+            if (i === p2StageId && selectedMode === '2p') {
+                card.classList.add('cursor-p2');
+                const b2 = document.createElement('span');
+                b2.className = `tag-p2 ${p2StageConfirmed ? 'tag-ready' : ''}`;
+                b2.textContent = p2StageConfirmed ? 'P2 READY' : 'P2';
+                badgeContainer.appendChild(b2);
+            }
+        }
+    }
+
+    function checkBothStagesConfirmed() {
+        if (selectedMode === '1p') {
+            if (p1StageConfirmed) {
+                selectedStageId = p1StageId;
+                startBattle();
+            }
+        } else if (selectedMode === '2p') {
+            if (p1StageConfirmed && p2StageConfirmed) {
+                if (p1StageId === p2StageId) {
+                    selectedStageId = p1StageId;
+                } else {
+                    selectedStageId = (Math.random() < 0.5) ? p1StageId : p2StageId;
+                    const prompt = document.getElementById('stageSelectPrompt');
+                    prompt.textContent = `🎲 TIEBREAKER: STAGE ${selectedStageId} SELECTED!`;
+                    prompt.style.color = '#ff1744';
+                }
+                setTimeout(startBattle, 400);
+            }
+        }
+    }
+
+    function confirmStageSelection() {
+        p1StageConfirmed = true;
+        if (selectedMode === '2p') p2StageConfirmed = true;
+        updateStageCardsUI();
+        checkBothStagesConfirmed();
+    }
+
+    function startBattle() {
+        document.getElementById('stageSelectScreen').style.display = 'none';
+        applySelectedCharacter(p1, p1CharId);
+        applySelectedCharacter(p2, p2CharId);
+        playBGM(stageData[selectedStageId].music); // Start actual battle music
+        restartMatch();
+    }
+
+    function startNextLadderMatch() {
+        selectedStageId = Math.floor(Math.random() * 3) + 1;
+        p2CharId = arcadeLadder[currentLadderIndex];
+        
+        applySelectedCharacter(p1, p1CharId);
+        applySelectedCharacter(p2, p2CharId);
+        playBGM(stageData[selectedStageId].music);
+        restartMatch();
+    }
+
+    function goToCharSelect() {
+        document.getElementById('winnerOverlay').style.display = 'none';
+        chooseGameMode(selectedMode);
+    }
+
+    function goToMainMenu() {
+        document.getElementById('winnerOverlay').style.display = 'none';
+        document.getElementById('introScreen').style.display = 'flex';
+        gameState = 'menu';
+        playIntroBGM(); // Intro music begins again upon returning to intro screen
+    }
+
+    // Download Multiple Templates for All 8 Fighters
+    function downloadAllTemplates() {
+        const createConfigStr = (name, hp, spd, punch, kick, spec, def, cd) => `/* Character Configuration Template */
+(function(global) {
+    global.getCharacterSpriteConfig = function() {
+        return {
+            name: "${name}",
+            stats: { maxHp: ${hp}, speed: ${spd}, jumpForce: 11.0, punchDmg: ${punch}, kickDmg: ${kick}, specialDmg: ${spec}, defReduction: ${def}, specialCooldown: ${cd} },
+            sounds: { jump: { start: 0.0, end: 0.3 }, punch: { start: 0.3, end: 0.6 }, kick: { start: 0.6, end: 0.95 }, special: { start: 1.0, end: 1.6 }, death: { start: 1.7, end: 2.4 } },
+            animations: {
+                idle: { fps: 6, loop: true, frames: [{x:0,y:0,w:64,h:64},{x:64,y:0,w:64,h:64},{x:128,y:0,w:64,h:64},{x:192,y:0,w:64,h:64}] },
+                run: { fps: 10, loop: true, frames: [{x:0,y:64,w:64,h:64},{x:64,y:64,w:64,h:64},{x:128,y:64,w:64,h:64},{x:192,y:64,w:64,h:64}] },
+                jump: { fps: 8, loop: false, frames: [{x:0,y:128,w:64,h:64},{x:64,y:128,w:64,h:64},{x:128,y:128,w:64,h:64}] },
+                turn: { fps: 8, loop: false, frames: [{x:0,y:192,w:64,h:64},{x:64,y:192,w:64,h:64}] },
+                crouch: { fps: 6, loop: false, frames: [{x:0,y:256,w:64,h:64},{x:64,y:256,w:64,h:64}] },
+                defence: { fps: 6, loop: false, frames: [{x:0,y:320,w:64,h:64},{x:64,y:320,w:64,h:64}] },
+                kick: { fps: 10, loop: false, frames: [{x:0,y:384,w:64,h:64},{x:64,y:384,w:64,h:64},{x:128,y:384,w:64,h:64}] },
+                punch: { fps: 10, loop: false, frames: [{x:0,y:448,w:64,h:64},{x:64,y:448,w:64,h:64},{x:128,y:448,w:64,h:64}] },
+                special: { fps: 10, loop: false, frames: [{x:0,y:512,w:64,h:64},{x:64,y:512,w:64,h:64},{x:128,y:512,w:64,h:64}] },
+                death: { fps: 6, loop: false, frames: [{x:0,y:576,w:64,h:64},{x:64,y:576,w:64,h:64},{x:128,y:576,w:64,h:64},{x:192,y:576,w:64,h:64}] }
+            }
+        };
+    };
+})(typeof window !== "undefined" ? window : this);`;
+
+        const files = [
+            { name: 'character1.js', content: createConfigStr('Striker', 100, 3.5, 10, 15, 30, 85, 3.0) },
+            { name: 'character2.js', content: createConfigStr('Brawler', 125, 3.0, 12, 18, 38, 80, 3.5) },
+            { name: 'character3.js', content: createConfigStr('Ninja', 85, 4.3, 8, 12, 24, 75, 2.5) },
+            { name: 'character4.js', content: createConfigStr('Master', 110, 3.2, 11, 16, 34, 90, 3.2) },
+            { name: 'character5.js', content: createConfigStr('Monk', 105, 3.6, 10, 14, 32, 85, 2.8) },
+            { name: 'character6.js', content: createConfigStr('Assassin', 90, 4.1, 9, 13, 28, 78, 2.6) },
+            { name: 'character7.js', content: createConfigStr('Valkyrie', 115, 3.4, 11, 17, 36, 82, 3.3) },
+            { name: 'character8.js', content: createConfigStr('Titan', 140, 2.8, 13, 19, 42, 88, 3.8) }
+        ];
+
+        files.forEach((f, idx) => {
+            setTimeout(() => {
+                const blob = new Blob([f.content], { type: 'application/javascript' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = f.name;
+                a.click();
+            }, idx * 180);
+        });
+    }
+
+    // Input Handling
+    const keys = {};
+    window.addEventListener('keydown', (e) => {
+        getAudioContext();
+        keys[e.code] = true;
+        handleActionInput(e.code);
+    });
+    window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+    function handleActionInput(code) {
+        if (gameState === 'char_select') {
+            if (code === 'KeyF' || code === 'KeyT' || code === 'KeyY') {
+                p1Confirmed = !p1Confirmed;
+                updateCharCardsUI();
+                checkBothCharactersConfirmed();
+            }
+            if ((code === 'KeyK' || code === 'KeyO' || code === 'KeyP') && selectedMode === '2p') {
+                p2Confirmed = !p2Confirmed;
+                updateCharCardsUI();
+                checkBothCharactersConfirmed();
+            }
+            return;
+        }
+
+        if (gameState === 'stage_select') {
+            if (code === 'KeyF' || code === 'KeyT' || code === 'KeyY') {
+                p1StageConfirmed = !p1StageConfirmed;
+                updateStageCardsUI();
+                checkBothStagesConfirmed();
+            }
+            if ((code === 'KeyK' || code === 'KeyO' || code === 'KeyP') && selectedMode === '2p') {
+                p2StageConfirmed = !p2StageConfirmed;
+                updateStageCardsUI();
+                checkBothStagesConfirmed();
+            }
+            return;
+        }
+
+        if (gameState !== 'fighting') return;
+
+        if (code === 'KeyF') triggerAttack(p1, 'punch');
+        if (code === 'KeyT') triggerAttack(p1, 'kick');
+        if (code === 'KeyY') triggerSpecial(p1);
+
+        if (selectedMode === '2p') {
+            if (code === 'KeyK') triggerAttack(p2, 'punch');
+            if (code === 'KeyO') triggerAttack(p2, 'kick');
+            if (code === 'KeyP') triggerSpecial(p2);
+        }
+    }
+
+    function bindTouch(id, keyEquiv, onTrigger) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('touchstart', (e) => { e.preventDefault(); getAudioContext(); if (keyEquiv) keys[keyEquiv] = true; if (onTrigger) onTrigger(); }, { passive: false });
+        el.addEventListener('touchend', (e) => { e.preventDefault(); if (keyEquiv) keys[keyEquiv] = false; }, { passive: false });
+        el.addEventListener('touchcancel', (e) => { e.preventDefault(); if (keyEquiv) keys[keyEquiv] = false; }, { passive: false });
+        el.addEventListener('mousedown', () => { if (keyEquiv) keys[keyEquiv] = true; if (onTrigger) onTrigger(); });
+        el.addEventListener('mouseup', () => { if (keyEquiv) keys[keyEquiv] = false; });
+    }
+
+    function handleP1ActionTouch(actionName) {
+        if (gameState === 'char_select') { p1Confirmed = !p1Confirmed; updateCharCardsUI(); checkBothCharactersConfirmed(); }
+        else if (gameState === 'stage_select') { p1StageConfirmed = !p1StageConfirmed; updateStageCardsUI(); checkBothStagesConfirmed(); }
+        else if (gameState === 'fighting') {
+            if (actionName === 'special') triggerSpecial(p1);
+            else triggerAttack(p1, actionName);
+        }
+    }
+
+    function handleP2ActionTouch(actionName) {
+        if (gameState === 'char_select' && selectedMode === '2p') { p2Confirmed = !p2Confirmed; updateCharCardsUI(); checkBothCharactersConfirmed(); }
+        else if (gameState === 'stage_select' && selectedMode === '2p') { p2StageConfirmed = !p2StageConfirmed; updateStageCardsUI(); checkBothStagesConfirmed(); }
+        else if (gameState === 'fighting') {
+            if (actionName === 'special') triggerSpecial(p2);
+            else triggerAttack(p2, actionName);
+        }
+    }
+
+    bindTouch('btnP1Def', 'KeyR');
+    bindTouch('btnP1Punch', null, () => handleP1ActionTouch('punch'));
+    bindTouch('btnP1Kick', null, () => handleP1ActionTouch('kick'));
+    bindTouch('btnP1Special', null, () => handleP1ActionTouch('special'));
+
+    bindTouch('btnP2Def', 'KeyI');
+    bindTouch('btnP2Punch', null, () => handleP2ActionTouch('punch'));
+    bindTouch('btnP2Kick', null, () => handleP2ActionTouch('kick'));
+    bindTouch('btnP2Special', null, () => handleP2ActionTouch('special'));
+
+    function setupVirtualJoystick(zoneId, knobId, keyMap) {
+        const zone = document.getElementById(zoneId);
+        const knob = document.getElementById(knobId);
+        if (!zone || !knob) return;
+
+        let touchId = null;
+        const maxRadius = 28;
+
+        function updatePos(clientX, clientY) {
+            const rect = zone.getBoundingClientRect();
+            let dx = clientX - (rect.left + rect.width / 2);
+            let dy = clientY - (rect.top + rect.height / 2);
+            const dist = Math.hypot(dx, dy);
+            if (dist > maxRadius) { dx = (dx / dist) * maxRadius; dy = (dy / dist) * maxRadius; }
+            knob.style.transform = `translate(${dx}px, ${dy}px)`;
+            keys[keyMap.left] = dx < -10; keys[keyMap.right] = dx > 10;
+            keys[keyMap.up] = dy < -14; keys[keyMap.down] = dy > 14;
+        }
+
+        function reset() {
+            touchId = null; knob.style.transform = `translate(0px, 0px)`;
+            keys[keyMap.left] = false; keys[keyMap.right] = false;
+            keys[keyMap.up] = false; keys[keyMap.down] = false;
+        }
+
+        zone.addEventListener('touchstart', (e) => {
+            e.preventDefault(); getAudioContext();
+            if (touchId === null && e.changedTouches.length > 0) {
+                touchId = e.changedTouches[0].identifier;
+                updatePos(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchmove', (e) => {
+            if (touchId === null) return;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === touchId) { updatePos(e.changedTouches[i].clientX, e.changedTouches[i].clientY); break; }
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchend', (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === touchId) { reset(); break; }
+            }
+        }, { passive: false });
+    }
+
+    setupVirtualJoystick('joystickZoneP1', 'joystickKnobP1', { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS' });
+    setupVirtualJoystick('joystickZoneP2', 'joystickKnobP2', { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', down: 'ArrowDown' });
+
+    function triggerAttack(f, actionName) {
+        if (f.isDead || f.hitStun > 0 || f.action === 'defence') return;
+        if (['punch', 'kick', 'special'].includes(f.action)) return;
+        f.action = actionName; f.frameIndex = 0; f.animTimer = 0; f.hasHit = false;
+    }
+
+    function triggerSpecial(f) {
+        if (f.specialTimer > 0 || f.isDead || f.hitStun > 0 || f.action === 'defence') return;
+        if (['punch', 'kick', 'special'].includes(f.action)) return;
+        f.specialTimer = f.specialCooldown;
+        f.action = 'special'; f.frameIndex = 0; f.animTimer = 0; f.hasHit = false;
+        playSoundSlice(f, 'special');
+    }
+
+    // Match Start & Physics
+    function restartMatch() {
+        p1.hp = p1.maxHp; p1.displayedHp = p1.maxHp; p1.specialTimer = 0; p1.x = 230; p1.y = p1.groundY; p1.vx = 0; p1.vy = 0; p1.facingLeft = false; p1.isDead = false; p1.action = 'idle'; p1.frameIndex = 0;
+        p2.hp = p2.maxHp; p2.displayedHp = p2.maxHp; p2.specialTimer = 0; p2.x = 630; p2.y = p2.groundY; p2.vx = 0; p2.vy = 0; p2.facingLeft = true; p2.isDead = false; p2.action = 'idle'; p2.frameIndex = 0;
+        hitSparks.length = 0; bloodParticles.length = 0; roundTimer = 99; timerAccumulator = 0;
+        document.getElementById('winnerOverlay').style.display = 'none';
+        document.getElementById('koBanner').style.display = 'none';
+
+        gameState = 'intro';
+        introTimer = 2.4;
+        const introText = document.getElementById('fightIntroText');
+        introText.style.display = 'block';
+        introText.textContent = 'ROUND 1';
+        introText.style.color = '#ffd700';
+    }
+
+    function updateIntro(dt) {
+        introTimer -= dt;
+        const introText = document.getElementById('fightIntroText');
+        if (introTimer < 1.2 && introTimer > 0) {
+            introText.textContent = 'FIGHT!';
+            introText.style.color = '#ff1744';
+        } else if (introTimer <= 0) {
+            introText.style.display = 'none';
+            gameState = 'fighting';
+        }
+    }
+
+    let botTimer = 0;
+    function updateBotAI(bot, target, dt) {
+        if (bot.isDead || bot.hitStun > 0 || gameState !== 'fighting') return;
+        botTimer += dt;
+        const dist = target.x - bot.x;
+        const absDist = Math.abs(dist);
+
+        if (botTimer > 0.35) {
+            botTimer = 0;
+            const rand = Math.random();
+            if (absDist > 120) {
+                bot.vx = (dist > 0 ? bot.speed : -bot.speed);
+                bot.facingLeft = (bot.vx < 0);
+            } else if (absDist <= 120 && absDist > 45) {
+                bot.facingLeft = (dist < 0);
+                if (rand < 0.25 && bot.specialTimer <= 0) triggerSpecial(bot);
+                else if (rand < 0.6) triggerAttack(bot, 'kick');
+                else if (rand < 0.85) triggerAttack(bot, 'punch');
+                else if (bot.isGrounded) { bot.vy = -bot.jumpForce; bot.isGrounded = false; playSoundSlice(bot, 'jump'); }
+            } else {
+                bot.facingLeft = (dist < 0);
+                if (rand < 0.35) bot.action = 'defence';
+                else if (rand < 0.65) triggerAttack(bot, 'punch');
+                else { bot.vx = (dist > 0 ? -bot.speed : bot.speed); bot.facingLeft = (bot.vx < 0); }
+            }
+        }
+    }
+
+    function updateFighter(f, opponent, dt) {
+        if (gameState === 'intro' || gameState === 'menu') {
+            f.vx = 0; f.vy = 0; f.action = 'idle';
+        }
+        if (gameState === 'ko_delay') {
+            if (!f.isDead) { f.vx = 0; f.vy = 0; f.action = 'idle'; }
+            else { f.vx = 0; f.action = 'death'; }
+        }
+
+        if (f.hitStun > 0) { f.hitStun -= dt; if (f.hitStun <= 0) f.hitStun = 0; }
+        if (f.specialTimer > 0) { f.specialTimer -= dt; if (f.specialTimer <= 0) f.specialTimer = 0; }
+
+        if (!f.isDead && f.hitStun === 0 && gameState === 'fighting') {
+            let moveL = false, moveR = false, jump = false, crouch = false, defend = false;
+            if (f.id === 1) {
+                moveL = keys['KeyA']; moveR = keys['KeyD']; jump = keys['KeyW']; crouch = keys['KeyS']; defend = keys['KeyR'];
+            } else if (selectedMode === '2p') {
+                moveL = keys['ArrowLeft']; moveR = keys['ArrowRight']; jump = keys['ArrowUp']; crouch = keys['ArrowDown']; defend = keys['KeyI'];
+            }
+
+            const isAttacking = ['punch', 'kick', 'special'].includes(f.action);
+
+            if (defend && f.isGrounded && !isAttacking) {
+                f.vx = 0; if (f.action !== 'defence') { f.action = 'defence'; f.frameIndex = 0; }
+            } else if (crouch && f.isGrounded && !isAttacking) {
+                f.vx = 0; if (f.action !== 'crouch') { f.action = 'crouch'; f.frameIndex = 0; }
+            } else {
+                if (f.action === 'defence' || f.action === 'crouch') { f.action = 'idle'; f.frameIndex = 0; }
+                if (!isAttacking) {
+                    if (moveL && !moveR) { f.vx = -f.speed; f.facingLeft = true; }
+                    else if (moveR && !moveL) { f.vx = f.speed; f.facingLeft = false; }
+                    else if (f.id === 1 || selectedMode === '2p') f.vx = 0;
+                }
+                if (jump && f.isGrounded && !isAttacking) {
+                    f.vy = -f.jumpForce; f.isGrounded = false; playSoundSlice(f, 'jump');
+                    if (f.config?.animations['jump']) { f.action = 'jump'; f.frameIndex = 0; }
+                }
+            }
+        }
+
+        f.y += f.vy;
+        if (f.y < f.groundY) { f.vy += 0.55; f.isGrounded = false; }
+        else { f.y = f.groundY; f.vy = 0; f.isGrounded = true; }
+
+        f.x += f.vx;
+        if (f.x < 45) f.x = 45;
+        if (f.x > canvas.width - 45) f.x = canvas.width - 45;
+
+        const lockedActions = ['punch', 'kick', 'special', 'death', 'crouch', 'defence'];
+        if (!lockedActions.includes(f.action) && gameState === 'fighting') {
+            if (!f.isGrounded) f.action = 'jump';
+            else if (Math.abs(f.vx) > 0.2) f.action = 'run';
+            else f.action = 'idle';
+        }
+
+        const anim = f.config?.animations[f.action];
+        const fps = anim?.fps || 8;
+        const frameCount = anim?.frames?.length || (f.action === 'death' ? 5 : 4);
+
+        f.animTimer += dt;
+        if (f.animTimer >= (1 / fps)) {
+            f.animTimer = 0; f.frameIndex++;
+            if (['punch', 'kick', 'special'].includes(f.action) && !f.hasHit && gameState === 'fighting') {
+                checkMeleeHit(f, opponent);
+            }
+            if (f.frameIndex >= frameCount) {
+                if (anim?.loop && f.action !== 'death') f.frameIndex = 0;
+                else {
+                    if (['death', 'crouch', 'defence'].includes(f.action)) f.frameIndex = frameCount - 1;
+                    else { f.frameIndex = 0; f.action = 'idle'; }
+                }
+            }
+        }
+        f.displayedHp += (f.hp - f.displayedHp) * 0.1;
+    }
+
+    function getHurtbox(f) {
+        const isCrouched = (f.action === 'crouch');
+        const h = isCrouched ? 34 : 64;
+        return { x: f.x - 16, y: f.y - h, w: 32, h };
+    }
+
+    function checkMeleeHit(attacker, victim) {
+        if (victim.isDead || attacker.hasHit) return;
+        let reach = 36, damage = attacker.punchDmg, isSpecial = false;
+        if (attacker.action === 'kick') { reach = 48; damage = attacker.kickDmg; }
+        else if (attacker.action === 'special') { reach = 58; damage = attacker.specialDmg; isSpecial = true; }
+
+        const dir = attacker.facingLeft ? -1 : 1;
+        const hitBox = { x: dir === 1 ? attacker.x : attacker.x - reach, y: attacker.y - 45, w: reach, h: 32 };
+        const hurtBox = getHurtbox(victim);
+
+        if (hitBox.x < hurtBox.x + hurtBox.w && hitBox.x + hitBox.w > hurtBox.x &&
+            hitBox.y < hurtBox.y + hurtBox.h && hitBox.y + hitBox.h > hurtBox.y) {
+            attacker.hasHit = true;
+            if (isSpecial) screenShake = 8;
+            
+            if (attacker.action === 'punch' || attacker.action === 'kick') {
+                playSoundSlice(attacker, attacker.action);
+            }
+
+            applyDamage(victim, damage, dir * (isSpecial ? 8 : 5));
+            createSparks(victim.x, victim.y - 35, victim.action === 'defence');
+            createBloodSplatter(victim.x, victim.y - 35, dir * (isSpecial ? 7 : 4), victim.action === 'defence' ? 12 : 36);
+        }
+    }
+
+    function applyDamage(victim, damage, knockback) {
+        const isDef = (victim.action === 'defence');
+        const finalDmg = isDef ? Math.max(1, Math.round(damage * (1 - victim.defReduction))) : damage;
+        victim.hp = Math.max(0, victim.hp - finalDmg);
+        victim.hitStun = isDef ? 0.08 : 0.22;
+        victim.vx = isDef ? knockback * 0.3 : knockback;
+
+        if (victim.hp <= 0 && !victim.isDead) {
+            victim.isDead = true; victim.action = 'death'; victim.frameIndex = 0;
+            playSoundSlice(victim, 'death');
+            createBloodSplatter(victim.x, victim.y - 25, knockback, 50);
+            gameState = 'ko_delay'; pendingWinnerId = victim.id === 1 ? 2 : 1; koTimer = 2.4;
+            document.getElementById('koBanner').style.display = 'block';
+        }
+    }
+
+    function createSparks(x, y, isShield) {
+        for (let i = 0; i < (isShield ? 12 : 8); i++) {
+            hitSparks.push({ x, y, vx: (Math.random() - 0.5) * 8, vy: (Math.random() - 0.5) * 8, color: isShield ? '#00e5ff' : '#ffd700', life: 0.25 });
+        }
+    }
+
+    function createBloodSplatter(x, y, knockback, amount = 35) {
+        for (let i = 0; i < amount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 6.5 + 1.5;
+            const dirBias = knockback > 0 ? 1.5 : (knockback < 0 ? -1.5 : 0);
+            bloodParticles.push({
+                x: x + (Math.random() - 0.5) * 12,
+                y: y + (Math.random() - 0.5) * 16,
+                vx: Math.cos(angle) * speed + dirBias,
+                vy: Math.sin(angle) * speed - Math.random() * 3.0,
+                radius: Math.random() * 2.2 + 0.9,
+                color: ['#b30000', '#d50000', '#ff1744', '#8a0303', '#ff0033'][Math.floor(Math.random() * 5)],
+                alpha: 1.0,
+                decay: Math.random() * 0.015 + 0.01,
+                gravity: 0.28,
+                groundY: 320
+            });
+        }
+    }
+
+    // Winner Screen & 1-Player Gauntlet Progression
+    function updateKoDelay(dt) {
+        koTimer -= dt;
+        if (koTimer <= 0) {
+            document.getElementById('koBanner').style.display = 'none';
+            document.getElementById('winnerOverlay').style.display = 'flex';
+            gameState = 'match_over';
+
+            const winnerTitle = document.getElementById('winnerTitle');
+            const winnerHeading = document.getElementById('winnerHeading');
+            const ladderText = document.getElementById('ladderStatusText');
+            const buttonsContainer = document.getElementById('winnerButtonsContainer');
+            buttonsContainer.innerHTML = '';
+
+            if (selectedMode === '1p') {
+                if (pendingWinnerId === 1) {
+                    currentLadderIndex++;
+                    if (currentLadderIndex >= arcadeLadder.length) {
+                        winnerHeading.textContent = "CONGRATULATIONS!";
+                        winnerHeading.style.color = "#ffd700";
+                        winnerTitle.textContent = "YOU WON THEM ALL!";
+                        winnerTitle.style.color = "#00e676";
+                        ladderText.textContent = `All 7 Opponents Defeated with ${p1.characterName}!`;
+
+                        buttonsContainer.innerHTML = `
+                            <button class="btn-menu" onclick="goToMainMenu()">🏆 MAIN MENU</button>
+                            <button class="btn-menu btn-secondary-menu" onclick="goToCharSelect()">👥 NEW CAMPAIGN</button>
+                        `;
+                    } else {
+                        winnerHeading.textContent = "STAGE CLEARED!";
+                        winnerHeading.style.color = "#00e676";
+                        winnerTitle.textContent = `${p1.name} WINS!`;
+                        ladderText.textContent = `Opponents Defeated: ${currentLadderIndex} / ${arcadeLadder.length} | Next: ${characterData[arcadeLadder[currentLadderIndex]].name}`;
+
+                        buttonsContainer.innerHTML = `
+                            <button class="btn-menu" style="background:#00bcd4; color:#000;" onclick="startNextLadderMatch()">⚔️ NEXT OPPONENT (${currentLadderIndex + 1}/${arcadeLadder.length})</button>
+                            <button class="btn-menu btn-secondary-menu" onclick="goToMainMenu()">🏠 MENU</button>
+                        `;
+                    }
+                } else {
+                    winnerHeading.textContent = "DEFEAT";
+                    winnerHeading.style.color = "#ff1744";
+                    winnerTitle.textContent = `${p2.name} WINS`;
+                    ladderText.textContent = `Failed at Opponent ${currentLadderIndex + 1} of ${arcadeLadder.length}`;
+
+                    buttonsContainer.innerHTML = `
+                        <button class="btn-menu" onclick="restartMatch()">🔄 RETRY FIGHT</button>
+                        <button class="btn-menu btn-secondary-menu" onclick="goToCharSelect()">👥 FIGHTERS</button>
+                        <button class="btn-menu btn-secondary-menu" onclick="goToMainMenu()">🏠 MENU</button>
+                    `;
+                }
+            } else {
+                const winnerName = pendingWinnerId === 1 ? p1.name : p2.name;
+                winnerHeading.textContent = "DECISIVE VICTORY";
+                winnerHeading.style.color = "#ff1744";
+                winnerTitle.textContent = `${winnerName} WINS!`;
+                ladderText.textContent = "";
+
+                buttonsContainer.innerHTML = `
+                    <button class="btn-menu" onclick="restartMatch()">🔄 REMATCH</button>
+                    <button class="btn-menu btn-secondary-menu" onclick="goToCharSelect()">👥 FIGHTERS</button>
+                    <button class="btn-menu btn-secondary-menu" onclick="goToMainMenu()">🏠 MENU</button>
+                `;
+            }
+        }
+    }
+
+    // Drawing HUD & Arena
+    function drawHUD() {
+        ctx.fillStyle = '#222'; ctx.fillRect(40, 20, 290, 22);
+        ctx.fillStyle = '#ff1744'; ctx.fillRect(40, 20, (p1.displayedHp / p1.maxHp) * 290, 22);
+        ctx.fillStyle = '#00e676'; ctx.fillRect(40, 20, (p1.hp / p1.maxHp) * 290, 22);
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(40, 20, 290, 22);
+
+        ctx.fillStyle = p1.specialTimer <= 0 ? '#00e5ff' : '#666';
+        ctx.font = 'bold 11px Segoe UI'; ctx.textAlign = 'left';
+        ctx.fillText(p1.specialTimer <= 0 ? '⚡ SPECIAL READY' : `⏳ SPECIAL: ${p1.specialTimer.toFixed(1)}s`, 40, 54);
+        
+        ctx.fillStyle = '#00bcd4'; ctx.font = 'bold 13px Segoe UI';
+        ctx.fillText(`${p1.name} (${p1.hp}/${p1.maxHp} HP)`, 40, 15);
+
+        ctx.fillStyle = '#222'; ctx.fillRect(canvas.width - 330, 20, 290, 22);
+        ctx.fillStyle = '#ff1744'; const p2DispW = (p2.displayedHp / p2.maxHp) * 290;
+        ctx.fillRect(canvas.width - 40 - p2DispW, 20, p2DispW, 22);
+        ctx.fillStyle = '#00e676'; const p2W = (p2.hp / p2.maxHp) * 290;
+        ctx.fillRect(canvas.width - 40 - p2W, 20, p2W, 22);
+        ctx.strokeStyle = '#fff'; ctx.strokeRect(canvas.width - 330, 20, 290, 22);
+
+        ctx.fillStyle = p2.specialTimer <= 0 ? '#ff1744' : '#666'; ctx.textAlign = 'right';
+        ctx.fillText(p2.specialTimer <= 0 ? '⚡ SPECIAL READY' : `⏳ SPECIAL: ${p2.specialTimer.toFixed(1)}s`, canvas.width - 40, 54);
+        
+        ctx.fillStyle = '#ff3838';
+        const p2Label = selectedMode === '1p' ? `CPU [${currentLadderIndex + 1}/7]: ${p2.characterName.toUpperCase()}` : p2.name;
+        ctx.fillText(`${p2Label} (${p2.hp}/${p2.maxHp} HP)`, canvas.width - 40, 15);
+
+        ctx.fillStyle = '#111'; ctx.fillRect(canvas.width / 2 - 25, 12, 50, 36);
+        ctx.strokeStyle = '#ffd700'; ctx.strokeRect(canvas.width / 2 - 25, 12, 50, 36);
+        ctx.fillStyle = '#ffd700'; ctx.font = 'bold 24px Impact'; ctx.textAlign = 'center';
+        ctx.fillText(Math.ceil(roundTimer), canvas.width / 2, 38);
+    }
+
+    function drawFighter(f) {
+        ctx.beginPath(); ctx.ellipse(f.x, f.groundY + 3, 22, 6, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'; ctx.fill();
+
+        if (f.hitStun > 0 && Math.floor(Date.now() / 50) % 2 === 0) ctx.filter = 'brightness(2.5)';
+
+        if (f.spriteCanvas && f.config) {
+            const anim = f.config.animations[f.action] || f.config.animations['idle'];
+            if (anim && anim.frames && anim.frames.length > 0) {
+                const frame = anim.frames[f.frameIndex] || anim.frames[0];
+                ctx.save(); ctx.translate(f.x, f.y);
+                if (f.facingLeft) ctx.scale(-1, 1);
+                ctx.drawImage(f.spriteCanvas, frame.x, frame.y, frame.w, frame.h, -frame.w / 2, -frame.h, frame.w, frame.h);
+                ctx.restore();
+            }
+        } else {
+            ctx.save(); ctx.translate(f.x, f.y);
+            if (f.facingLeft) ctx.scale(-1, 1);
+            ctx.strokeStyle = f.themeColor; ctx.fillStyle = f.themeColor; ctx.lineWidth = 4; ctx.lineCap = 'round';
+            if (f.action === 'death') {
+                const angle = Math.min(Math.PI / 2, (f.frameIndex / 4) * (Math.PI / 2));
+                ctx.rotate(angle);
+                ctx.beginPath(); ctx.arc(0, -50, 10, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(0, -40); ctx.lineTo(0, -10); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(-10, 0); ctx.moveTo(0, -10); ctx.lineTo(10, 0); ctx.stroke();
+            } else if (f.action === 'crouch') {
+                ctx.beginPath(); ctx.arc(0, -32, 9, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(0, -23); ctx.lineTo(0, -10); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(-10, 0); ctx.moveTo(0, -10); ctx.lineTo(10, 0); ctx.stroke();
+            } else if (f.action === 'defence') {
+                ctx.beginPath(); ctx.arc(0, -52, 9, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(0, -43); ctx.lineTo(0, -15); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(-8, 0); ctx.moveTo(0, -15); ctx.lineTo(8, 0); ctx.stroke();
+                ctx.strokeStyle = '#00e5ff'; ctx.beginPath(); ctx.arc(14, -30, 20, -Math.PI / 3, Math.PI / 3); ctx.stroke();
+            } else if (f.action === 'punch') {
+                ctx.beginPath(); ctx.arc(0, -52, 9, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(0, -43); ctx.lineTo(0, -15); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, -35); ctx.lineTo(24, -35); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(-8, 0); ctx.moveTo(0, -15); ctx.lineTo(8, 0); ctx.stroke();
+            } else if (f.action === 'kick') {
+                ctx.beginPath(); ctx.arc(0, -52, 9, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(0, -43); ctx.lineTo(0, -15); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(-8, 0); ctx.moveTo(0, -15); ctx.lineTo(24, -15); ctx.stroke();
+            } else if (f.action === 'special') {
+                ctx.beginPath(); ctx.arc(0, -52, 9, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(0, -43); ctx.lineTo(0, -15); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, -35); ctx.lineTo(28, -25); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(-10, 0); ctx.moveTo(0, -15); ctx.lineTo(16, 0); ctx.stroke();
+                ctx.fillStyle = '#ff0055'; ctx.beginPath(); ctx.arc(28, -25, 12, 0, Math.PI * 2); ctx.fill();
+            } else {
+                const bob = f.action === 'run' ? Math.sin(Date.now() / 80) * 4 : 0;
+                ctx.beginPath(); ctx.arc(0, -52 + bob, 9, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(0, -43 + bob); ctx.lineTo(0, -15); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, -15); ctx.lineTo(-8, 0); ctx.moveTo(0, -15); ctx.lineTo(8, 0); ctx.stroke();
+            }
+            ctx.restore();
+        }
+        ctx.filter = 'none';
+    }
+
+    function draw() {
+        ctx.save();
+        if (screenShake > 0) {
+            ctx.translate((Math.random() - 0.5) * screenShake, (Math.random() - 0.5) * screenShake);
+            screenShake *= 0.85; if (screenShake < 0.5) screenShake = 0;
+        }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const currentStage = stageData[selectedStageId];
+        if (currentStage?.bgImg) {
+            ctx.drawImage(currentStage.bgImg, 0, 0, canvas.width, canvas.height);
+        } else {
+            const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            const colors = currentStage?.grad || ['#1c1c38', '#2e2e54', '#424250'];
+            grad.addColorStop(0, colors[0]); grad.addColorStop(0.7, colors[1]); grad.addColorStop(1, colors[2]);
+            ctx.fillStyle = grad; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#ffb300'; ctx.fillRect(0, 320, canvas.width, 4);
+        }
+
+        // Render Sparks
+        for (let i = hitSparks.length - 1; i >= 0; i--) {
+            const s = hitSparks[i]; s.x += s.vx; s.y += s.vy; s.life -= 0.016;
+            ctx.fillStyle = s.color || '#ffd700'; ctx.fillRect(s.x, s.y, 4, 4);
+            if (s.life <= 0) hitSparks.splice(i, 1);
+        }
+
+        // Render Blood Particles
+        for (let i = bloodParticles.length - 1; i >= 0; i--) {
+            const p = bloodParticles[i];
+            p.vy += p.gravity;
+            p.x += p.vx;
+            p.y += p.vy;
+            p.alpha -= p.decay;
+
+            if (p.y >= p.groundY) {
+                p.y = p.groundY;
+                p.vx *= 0.65;
+                p.vy = 0;
+            }
+
+            if (p.alpha <= 0) {
+                bloodParticles.splice(i, 1);
+                continue;
+            }
+
+            ctx.save();
+            ctx.globalAlpha = Math.max(0, p.alpha);
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        if (gameState === 'fighting' || gameState === 'intro' || gameState === 'ko_delay' || gameState === 'match_over') {
+            drawFighter(p1);
+            drawFighter(p2);
+            drawHUD();
+        }
+        ctx.restore();
+    }
+
+    // Main Game Loop
+    let lastTime = performance.now();
+    function gameLoop(now) {
+        const dt = Math.min((now - lastTime) / 1000, 0.1);
+        lastTime = now;
+
+        if (gameState === 'char_select') {
+            updateCharSelectionInput(dt);
+            renderCharSelectPreviews(dt);
+        } else if (gameState === 'stage_select') {
+            updateStageSelectionInput(dt);
+        }
+
+        if (gameState === 'intro') {
+            updateIntro(dt);
+        } else if (gameState === 'fighting') {
+            timerAccumulator += dt;
+            if (timerAccumulator >= 1.0) {
+                timerAccumulator = 0; roundTimer -= 1;
+                if (roundTimer <= 0) {
+                    roundTimer = 0;
+                    gameState = 'ko_delay'; pendingWinnerId = p1.hp >= p2.hp ? 1 : 2; koTimer = 2.4;
+                    document.getElementById('koBanner').style.display = 'block';
+                }
+            }
+            if (selectedMode === '1p') updateBotAI(p2, p1, dt);
+        } else if (gameState === 'ko_delay') {
+            updateKoDelay(dt);
+        }
+
+        if (gameState === 'fighting' || gameState === 'intro' || gameState === 'ko_delay') {
+            updateFighter(p1, p2, dt);
+            updateFighter(p2, p1, dt);
+        }
+
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+    requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

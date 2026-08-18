@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sprite Sheet & Character Configurator</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #121217;
+            color: #eee;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #sidebar {
+            width: 430px;
+            background: #1c1c24;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            gap: 12px;
+            overflow-y: auto;
+        }
+
+        h2, h3 { margin: 2px 0; color: #00bcd4; font-size: 15px; }
+        h2 { font-size: 17px; border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 6px; }
+
+        .section {
+            background: #262632;
+            padding: 12px;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label { font-size: 12px; color: #bbb; display: flex; justify-content: space-between; align-items: center; }
+        input, select, button {
+            padding: 5px 8px;
+            border-radius: 4px;
+            border: 1px solid #444;
+            background: #181822;
+            color: #fff;
+            font-size: 12px;
+        }
+
+        input[type="number"] { width: 75px; }
+        input[type="text"] { width: 150px; }
+        .row-group { display: flex; gap: 8px; align-items: center; }
+        .row-group > * { flex: 1; }
+
+        button.btn-action {
+            background: #00bcd4;
+            color: #000;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            padding: 10px;
+            font-size: 14px;
+            transition: background 0.2s;
+            border-radius: 6px;
+        }
+        button.btn-action:hover { background: #00e5ff; }
+
+        button.btn-secondary {
+            background: #38384a;
+            border: 1px solid #555;
+            cursor: pointer;
+        }
+        button.btn-secondary:hover { background: #4a4a60; }
+
+        .file-upload-btn {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            text-align: center;
+        }
+        .file-upload-btn input[type="file"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        #workspace {
+            flex: 1;
+            background: #0a0a0e;
+            position: relative;
+            overflow: auto;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            padding: 20px;
+        }
+
+        #canvasWrapper {
+            position: relative;
+            background: #ffffff;
+            box-shadow: 0 6px 25px rgba(0,0,0,0.7);
+            display: inline-block;
+        }
+
+        canvas { display: block; }
+        #previewCanvas {
+            background: #1a1a20;
+            border: 1px solid #444;
+            margin: 0 auto;
+            display: block;
+            border-radius: 4px;
+        }
+
+        .pill-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            max-height: 80px;
+            overflow-y: auto;
+        }
+        .pill {
+            padding: 3px 8px;
+            background: #333;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .pill.active {
+            background: #00bcd4;
+            color: #000;
+            font-weight: bold;
+        }
+
+        .coord-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .audio-row {
+            background: #1a1a24;
+            padding: 6px;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 11px;
+        }
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            justify-content: space-between;
+        }
+        .audio-controls input { width: 55px; }
+
+        .badge { font-size: 11px; color: #8bc34a; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h2>Sprite & Character Configurator</h2>
+
+    <!-- 1. Assets & Setup -->
+    <div class="section">
+        <h3>1. Assets & Setup</h3>
+        <label>Sprite Sheet (PNG):</label>
+        <input type="file" id="imgFileInput" accept="image/png, image/jpeg">
+
+        <label style="margin-top:4px;">Action SFX Audio (MP3):</label>
+        <input type="file" id="audioFileInput" accept="audio/mp3, audio/wav, audio/ogg">
+        <audio id="audioMaster" controls style="width:100%; height:28px; margin-top:4px; display:none;"></audio>
+
+        <label style="margin-top:4px;">Edit Previous Setup (.js):</label>
+        <button class="btn-secondary file-upload-btn">
+            📂 Load Existing character_config.js
+            <input type="file" id="loadJsInput" accept=".js">
+        </button>
+        <span id="configLoadedBadge" class="badge" style="display:none;">✓ Setup Loaded</span>
+    </div>
+
+    <!-- 2. Character Name & Stats -->
+    <div class="section">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>2. Character Profile & Stats</h3>
+            <button class="btn-secondary" onclick="randomizeStats()" style="color:#ffb74d;">🎲 Randomize</button>
+        </div>
+
+        <label style="margin-bottom:4px;">
+            <b>Character Name:</b>
+            <input type="text" id="charName" value="Dragon Master" placeholder="Enter Character Name">
+        </label>
+
+        <div class="coord-grid">
+            <label>Health (HP): <input type="number" id="statHp" min="50" max="300" value="100"></label>
+            <label>Speed: <input type="number" id="statSpeed" step="0.1" min="1" max="8" value="3.5"></label>
+            <label>Jump Height: <input type="number" id="statJump" step="0.5" min="6" max="18" value="11"></label>
+            <label>Punch Power: <input type="number" id="statPunch" min="3" max="35" value="10"></label>
+            <label>Kick Power: <input type="number" id="statKick" min="5" max="45" value="15"></label>
+            <label>Special Power: <input type="number" id="statSpecial" min="15" max="80" value="30"></label>
+            <label>Defence %: <input type="number" id="statDef" min="10" max="95" value="85"></label>
+            <label>Cooldown (s): <input type="number" id="statCooldown" step="0.5" min="0.5" max="10" value="3"></label>
+        </div>
+    </div>
+
+    <!-- 3. Audio Slicer Panel -->
+    <div class="section">
+        <h3>3. Move Sound Timestamps (s)</h3>
+        
+        <div class="audio-row">
+            <b>▲ Jump Sound:</b>
+            <div class="audio-controls">
+                Start: <input type="number" id="sndJumpStart" step="0.05" value="0.0">
+                End: <input type="number" id="sndJumpEnd" step="0.05" value="0.3">
+                <button class="btn-secondary" onclick="playSlice('jump')">▶ Play</button>
+            </div>
+        </div>
+
+        <div class="audio-row">
+            <b>👊 Punch Sound:</b>
+            <div class="audio-controls">
+                Start: <input type="number" id="sndPunchStart" step="0.05" value="0.3">
+                End: <input type="number" id="sndPunchEnd" step="0.05" value="0.6">
+                <button class="btn-secondary" onclick="playSlice('punch')">▶ Play</button>
+            </div>
+        </div>
+
+        <div class="audio-row">
+            <b>🦵 Kick Sound:</b>
+            <div class="audio-controls">
+                Start: <input type="number" id="sndKickStart" step="0.05" value="0.6">
+                End: <input type="number" id="sndKickEnd" step="0.05" value="0.95">
+                <button class="btn-secondary" onclick="playSlice('kick')">▶ Play</button>
+            </div>
+        </div>
+
+        <div class="audio-row">
+            <b>⚡ Special Move Sound:</b>
+            <div class="audio-controls">
+                Start: <input type="number" id="sndSpecialStart" step="0.05" value="1.0">
+                End: <input type="number" id="sndSpecialEnd" step="0.05" value="1.6">
+                <button class="btn-secondary" onclick="playSlice('special')">▶ Play</button>
+            </div>
+        </div>
+
+        <div class="audio-row">
+            <b>💀 Death Sound:</b>
+            <div class="audio-controls">
+                Start: <input type="number" id="sndDeathStart" step="0.05" value="1.7">
+                End: <input type="number" id="sndDeathEnd" step="0.05" value="2.4">
+                <button class="btn-secondary" onclick="playSlice('death')">▶ Play</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Move & Animation Slicer -->
+    <div class="section">
+        <h3>4. Move / Animation Slicer</h3>
+        <select id="moveSelect" onchange="switchMove(this.value)"></select>
+
+        <div class="row-group">
+            <label>FPS: <input type="number" id="moveFps" min="1" max="60" value="8" onchange="updateMoveConfig()"></label>
+            <label>Loop: <input type="checkbox" id="moveLoop" checked onchange="updateMoveConfig()"></label>
+        </div>
+
+        <label>Frames in this move:</label>
+        <div id="framePillList" class="pill-list"></div>
+
+        <div class="row-group">
+            <button class="btn-secondary" onclick="addFrame()">+ Frame</button>
+            <button class="btn-secondary" onclick="duplicateFrame()">📋 Duplicate</button>
+            <button class="btn-secondary" onclick="removeFrame()" style="color:#ff6b6b;">🗑️ Delete</button>
+        </div>
+    </div>
+
+    <!-- 5. Coordinates & Preview -->
+    <div class="section">
+        <h3>5. Frame Area & Preview</h3>
+        <div class="coord-grid">
+            <label>X: <input type="number" id="boxX" oninput="updateActiveBoxManual()"></label>
+            <label>Y: <input type="number" id="boxY" oninput="updateActiveBoxManual()"></label>
+            <label>W: <input type="number" id="boxW" oninput="updateActiveBoxManual()"></label>
+            <label>H: <input type="number" id="boxH" oninput="updateActiveBoxManual()"></label>
+        </div>
+        <button class="btn-secondary" onclick="autoSliceRow()">⚡ Auto-Slice Across Row</button>
+        <canvas id="previewCanvas" width="80" height="80" style="margin-top:6px;"></canvas>
+    </div>
+
+    <button class="btn-action" onclick="exportJS()">💾 Download character_config.js</button>
+</div>
+
+<div id="workspace">
+    <div id="canvasWrapper">
+        <canvas id="editorCanvas"></canvas>
+    </div>
+</div>
+
+<script>
+    const defaultMoves = [
+        { id: 'idle', name: 'Idle', row: 0, fps: 6, loop: true, count: 6 },
+        { id: 'run', name: 'Run', row: 1, fps: 10, loop: true, count: 6 },
+        { id: 'jump', name: 'Jump', row: 2, fps: 8, loop: false, count: 6 },
+        { id: 'turn', name: 'Turn Around', row: 3, fps: 8, loop: false, count: 4 },
+        { id: 'crouch', name: 'Crouch / Crunch', row: 4, fps: 6, loop: false, count: 4 },
+        { id: 'defence', name: 'Defence / Block', row: 5, fps: 6, loop: false, count: 3 },
+        { id: 'kick', name: 'Kick', row: 6, fps: 10, loop: false, count: 4 },
+        { id: 'punch', name: 'Punch', row: 7, fps: 10, loop: false, count: 4 },
+        { id: 'special', name: 'Special Move (Melee)', row: 8, fps: 10, loop: false, count: 6 },
+        { id: 'death', name: 'Death', row: 9, fps: 6, loop: false, count: 5 }
+    ];
+
+    let spriteImg = new Image();
+    let movesData = {};
+    let activeMoveKey = 'idle';
+    let activeFrameIdx = 0;
+
+    const HANDLE_SIZE = 8;
+    let dragMode = null;
+    let dragOffset = { x: 0, y: 0 };
+    let initialBox = null;
+    let startMouse = { x: 0, y: 0 };
+
+    const editorCanvas = document.getElementById('editorCanvas');
+    const ctx = editorCanvas.getContext('2d');
+    const previewCanvas = document.getElementById('previewCanvas');
+    const pCtx = previewCanvas.getContext('2d');
+    const audioMaster = document.getElementById('audioMaster');
+
+    function initDefaultData() {
+        defaultMoves.forEach(m => {
+            const frames = [];
+            for (let i = 0; i < m.count; i++) {
+                frames.push({ x: i * 64, y: m.row * 64, w: 64, h: 64 });
+            }
+            movesData[m.id] = { name: m.name, fps: m.fps, loop: m.loop, frames: frames };
+        });
+    }
+
+    function initUI() {
+        const sel = document.getElementById('moveSelect');
+        sel.innerHTML = '';
+        defaultMoves.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.name;
+            sel.appendChild(opt);
+        });
+        updateFrameUI();
+    }
+
+    function randomizeStats() {
+        const sampleNames = ["Thunder Wolf", "Crimson Blade", "Viper Strike", "Iron Titan", "Ghost Samurai", "Storm Valkyrie"];
+        document.getElementById('charName').value = sampleNames[Math.floor(Math.random() * sampleNames.length)];
+        document.getElementById('statHp').value = Math.floor(Math.random() * 120 + 80);
+        document.getElementById('statSpeed').value = (Math.random() * 3 + 2.5).toFixed(1);
+        document.getElementById('statJump').value = (Math.random() * 5 + 9.5).toFixed(1);
+        document.getElementById('statPunch').value = Math.floor(Math.random() * 12 + 7);
+        document.getElementById('statKick').value = Math.floor(Math.random() * 16 + 10);
+        document.getElementById('statSpecial').value = Math.floor(Math.random() * 30 + 20);
+        document.getElementById('statDef').value = Math.floor(Math.random() * 30 + 65);
+        document.getElementById('statCooldown').value = (Math.random() * 3 + 1.5).toFixed(1);
+    }
+
+    function switchMove(moveKey) {
+        activeMoveKey = moveKey;
+        activeFrameIdx = 0;
+        document.getElementById('moveFps').value = movesData[moveKey].fps;
+        document.getElementById('moveLoop').checked = movesData[moveKey].loop;
+        updateFrameUI();
+        redraw();
+    }
+
+    function updateMoveConfig() {
+        movesData[activeMoveKey].fps = Math.max(1, +document.getElementById('moveFps').value);
+        movesData[activeMoveKey].loop = document.getElementById('moveLoop').checked;
+    }
+
+    function updateFrameUI() {
+        const list = document.getElementById('framePillList');
+        list.innerHTML = '';
+        const frames = movesData[activeMoveKey].frames;
+
+        frames.forEach((f, idx) => {
+            const pill = document.createElement('div');
+            pill.className = `pill ${idx === activeFrameIdx ? 'active' : ''}`;
+            pill.textContent = `F${idx + 1} (${f.w}x${f.h})`;
+            pill.onclick = () => {
+                activeFrameIdx = idx;
+                updateFrameUI();
+                redraw();
+            };
+            list.appendChild(pill);
+        });
+
+        const activeBox = frames[activeFrameIdx];
+        if (activeBox) {
+            document.getElementById('boxX').value = Math.round(activeBox.x);
+            document.getElementById('boxY').value = Math.round(activeBox.y);
+            document.getElementById('boxW').value = Math.round(activeBox.w);
+            document.getElementById('boxH').value = Math.round(activeBox.h);
+        }
+    }
+
+    function updateActiveBoxManual() {
+        const box = movesData[activeMoveKey].frames[activeFrameIdx];
+        if (!box) return;
+        box.x = +document.getElementById('boxX').value;
+        box.y = +document.getElementById('boxY').value;
+        box.w = Math.max(4, +document.getElementById('boxW').value);
+        box.h = Math.max(4, +document.getElementById('boxH').value);
+        updateFrameUI();
+        redraw();
+    }
+
+    function addFrame() {
+        const frames = movesData[activeMoveKey].frames;
+        const last = frames[frames.length - 1] || { x: 0, y: 0, w: 64, h: 64 };
+        frames.push({ x: last.x + last.w, y: last.y, w: last.w, h: last.h });
+        activeFrameIdx = frames.length - 1;
+        updateFrameUI();
+        redraw();
+    }
+
+    function duplicateFrame() {
+        const frames = movesData[activeMoveKey].frames;
+        if (!frames[activeFrameIdx]) return;
+        const cur = frames[activeFrameIdx];
+        frames.splice(activeFrameIdx + 1, 0, { ...cur, x: cur.x + cur.w });
+        activeFrameIdx++;
+        updateFrameUI();
+        redraw();
+    }
+
+    function removeFrame() {
+        const frames = movesData[activeMoveKey].frames;
+        if (frames.length <= 1) {
+            alert('A move must have at least 1 frame.');
+            return;
+        }
+        frames.splice(activeFrameIdx, 1);
+        if (activeFrameIdx >= frames.length) activeFrameIdx = frames.length - 1;
+        updateFrameUI();
+        redraw();
+    }
+
+    function autoSliceRow() {
+        const box = movesData[activeMoveKey].frames[activeFrameIdx];
+        if (!box) return;
+        const count = prompt("How many frames to slice horizontally across using this box size?", "6");
+        const num = parseInt(count);
+        if (!num || num <= 0) return;
+
+        const newFrames = [];
+        for (let i = 0; i < num; i++) {
+            newFrames.push({ x: box.x + i * box.w, y: box.y, w: box.w, h: box.h });
+        }
+        movesData[activeMoveKey].frames = newFrames;
+        activeFrameIdx = 0;
+        updateFrameUI();
+        redraw();
+    }
+
+    document.getElementById('audioFileInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        audioMaster.src = URL.createObjectURL(file);
+        audioMaster.style.display = 'block';
+    });
+
+    let stopAudioTimeout = null;
+    function playSlice(actionKey) {
+        if (!audioMaster.src) {
+            alert('Please load an MP3 sound file first!');
+            return;
+        }
+        let start = 0, end = 0;
+        if (actionKey === 'jump') {
+            start = +document.getElementById('sndJumpStart').value;
+            end = +document.getElementById('sndJumpEnd').value;
+        } else if (actionKey === 'punch') {
+            start = +document.getElementById('sndPunchStart').value;
+            end = +document.getElementById('sndPunchEnd').value;
+        } else if (actionKey === 'kick') {
+            start = +document.getElementById('sndKickStart').value;
+            end = +document.getElementById('sndKickEnd').value;
+        } else if (actionKey === 'special') {
+            start = +document.getElementById('sndSpecialStart').value;
+            end = +document.getElementById('sndSpecialEnd').value;
+        } else if (actionKey === 'death') {
+            start = +document.getElementById('sndDeathStart').value;
+            end = +document.getElementById('sndDeathEnd').value;
+        }
+
+        if (end <= start) end = start + 0.3;
+        clearTimeout(stopAudioTimeout);
+        audioMaster.currentTime = start;
+        audioMaster.play();
+        stopAudioTimeout = setTimeout(() => {
+            audioMaster.pause();
+        }, (end - start) * 1000);
+    }
+
+    document.getElementById('imgFileInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            spriteImg.onload = () => {
+                editorCanvas.width = spriteImg.width;
+                editorCanvas.height = spriteImg.height;
+                redraw();
+            };
+            spriteImg.src = evt.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    document.getElementById('loadJsInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const script = document.createElement('script');
+                script.text = evt.target.result;
+                document.body.appendChild(script);
+
+                if (typeof window.getCharacterSpriteConfig === 'function') {
+                    const imported = window.getCharacterSpriteConfig();
+                    if (imported) {
+                        if (imported.name) {
+                            document.getElementById('charName').value = imported.name;
+                        } else if (imported.stats?.name) {
+                            document.getElementById('charName').value = imported.stats.name;
+                        }
+
+                        if (imported.animations) applyImportedConfig(imported.animations);
+                        if (imported.stats) {
+                            if (imported.stats.maxHp) document.getElementById('statHp').value = imported.stats.maxHp;
+                            if (imported.stats.speed) document.getElementById('statSpeed').value = imported.stats.speed;
+                            if (imported.stats.jumpForce) document.getElementById('statJump').value = imported.stats.jumpForce;
+                            if (imported.stats.punchDmg) document.getElementById('statPunch').value = imported.stats.punchDmg;
+                            if (imported.stats.kickDmg) document.getElementById('statKick').value = imported.stats.kickDmg;
+                            if (imported.stats.specialDmg) document.getElementById('statSpecial').value = imported.stats.specialDmg;
+                            if (imported.stats.defReduction) document.getElementById('statDef').value = imported.stats.defReduction;
+                            if (imported.stats.specialCooldown) document.getElementById('statCooldown').value = imported.stats.specialCooldown;
+                        }
+                        if (imported.sounds) {
+                            if (imported.sounds.jump) {
+                                document.getElementById('sndJumpStart').value = imported.sounds.jump.start;
+                                document.getElementById('sndJumpEnd').value = imported.sounds.jump.end;
+                            }
+                            if (imported.sounds.punch) {
+                                document.getElementById('sndPunchStart').value = imported.sounds.punch.start;
+                                document.getElementById('sndPunchEnd').value = imported.sounds.punch.end;
+                            }
+                            if (imported.sounds.kick) {
+                                document.getElementById('sndKickStart').value = imported.sounds.kick.start;
+                                document.getElementById('sndKickEnd').value = imported.sounds.kick.end;
+                            }
+                            if (imported.sounds.special) {
+                                document.getElementById('sndSpecialStart').value = imported.sounds.special.start;
+                                document.getElementById('sndSpecialEnd').value = imported.sounds.special.end;
+                            }
+                            if (imported.sounds.death) {
+                                document.getElementById('sndDeathStart').value = imported.sounds.death.start;
+                                document.getElementById('sndDeathEnd').value = imported.sounds.death.end;
+                            }
+                        }
+                        document.getElementById('configLoadedBadge').style.display = 'inline';
+                        document.getElementById('configLoadedBadge').textContent = `✓ Loaded: ${file.name}`;
+                    }
+                }
+            } catch (err) {
+                alert('Could not read JS configuration. Please select a valid character_config.js');
+            }
+        };
+        reader.readAsText(file);
+    });
+
+    function applyImportedConfig(importedAnimations) {
+        for (const [key, val] of Object.entries(importedAnimations)) {
+            if (movesData[key]) {
+                movesData[key].fps = val.fps || 8;
+                movesData[key].loop = val.loop !== undefined ? val.loop : true;
+                if (Array.isArray(val.frames) && val.frames.length > 0) {
+                    movesData[key].frames = val.frames.map(f => ({ ...f }));
+                }
+            }
+        }
+        switchMove(activeMoveKey);
+        updateFrameUI();
+        redraw();
+    }
+
+    function redraw() {
+        ctx.clearRect(0, 0, editorCanvas.width, editorCanvas.height);
+        if (spriteImg.src) {
+            ctx.drawImage(spriteImg, 0, 0);
+        }
+
+        for (const [mKey, move] of Object.entries(movesData)) {
+            const isCurrentMove = mKey === activeMoveKey;
+            move.frames.forEach((box, fIdx) => {
+                if (!isCurrentMove) {
+                    ctx.strokeStyle = 'rgba(120, 120, 120, 0.25)';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([3, 3]);
+                    ctx.strokeRect(box.x, box.y, box.w, box.h);
+                    ctx.setLineDash([]);
+                } else if (fIdx !== activeFrameIdx) {
+                    ctx.strokeStyle = 'rgba(0, 188, 212, 0.5)';
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeRect(box.x, box.y, box.w, box.h);
+                    ctx.fillStyle = 'rgba(0, 188, 212, 0.7)';
+                    ctx.font = '10px sans-serif';
+                    ctx.fillText(`F${fIdx + 1}`, box.x + 2, box.y + 11);
+                }
+            });
+        }
+
+        const activeBox = movesData[activeMoveKey]?.frames[activeFrameIdx];
+        if (activeBox) {
+            ctx.strokeStyle = '#ff0055';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(activeBox.x, activeBox.y, activeBox.w, activeBox.h);
+
+            ctx.fillStyle = '#ff0055';
+            ctx.fillRect(activeBox.x, activeBox.y - 18, 60, 18);
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText(`Active F${activeFrameIdx + 1}`, activeBox.x + 4, activeBox.y - 5);
+
+            drawHandles(activeBox);
+        }
+    }
+
+    function getHandles(b) {
+        return {
+            tl: { x: b.x, y: b.y },
+            tr: { x: b.x + b.w, y: b.y },
+            bl: { x: b.x, y: b.y + b.h },
+            br: { x: b.x + b.w, y: b.y + b.h },
+            t:  { x: b.x + b.w / 2, y: b.y },
+            b:  { x: b.x + b.w / 2, y: b.y + b.h },
+            l:  { x: b.x, y: b.y + b.h / 2 },
+            r:  { x: b.x + b.w, y: b.y + b.h / 2 }
+        };
+    }
+
+    function drawHandles(b) {
+        const handles = getHandles(b);
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = '#ff0055';
+        ctx.lineWidth = 1.5;
+        for (const [key, pt] of Object.entries(handles)) {
+            ctx.beginPath();
+            ctx.rect(pt.x - HANDLE_SIZE / 2, pt.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+            ctx.fill();
+            ctx.stroke();
+        }
+    }
+
+    function getMousePos(e) {
+        const rect = editorCanvas.getBoundingClientRect();
+        return {
+            x: (e.clientX - rect.left) * (editorCanvas.width / rect.width),
+            y: (e.clientY - rect.top) * (editorCanvas.height / rect.height)
+        };
+    }
+
+    function hitTestHandle(mx, my, box) {
+        const handles = getHandles(box);
+        const radius = HANDLE_SIZE;
+        for (const [key, pt] of Object.entries(handles)) {
+            if (Math.abs(mx - pt.x) <= radius && Math.abs(my - pt.y) <= radius) return key;
+        }
+        return null;
+    }
+
+    function hitTestBox(mx, my, box) {
+        return mx >= box.x && mx <= box.x + box.w && my >= box.y && my <= box.y + box.h;
+    }
+
+    editorCanvas.addEventListener('mousedown', (e) => {
+        const m = getMousePos(e);
+        const curFrames = movesData[activeMoveKey].frames;
+        const activeBox = curFrames[activeFrameIdx];
+
+        if (activeBox) {
+            const handle = hitTestHandle(m.x, m.y, activeBox);
+            if (handle) {
+                dragMode = handle;
+                initialBox = { ...activeBox };
+                startMouse = m;
+                return;
+            }
+        }
+
+        for (let i = curFrames.length - 1; i >= 0; i--) {
+            if (hitTestBox(m.x, m.y, curFrames[i])) {
+                activeFrameIdx = i;
+                dragMode = 'move';
+                initialBox = { ...curFrames[i] };
+                startMouse = m;
+                dragOffset = { x: m.x - curFrames[i].x, y: m.y - curFrames[i].y };
+                updateFrameUI();
+                redraw();
+                return;
+            }
+        }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        const m = getMousePos(e);
+        const curFrames = movesData[activeMoveKey]?.frames;
+        const activeBox = curFrames ? curFrames[activeFrameIdx] : null;
+
+        if (!dragMode && activeBox) {
+            const handle = hitTestHandle(m.x, m.y, activeBox);
+            if (handle === 'tl' || handle === 'br') editorCanvas.style.cursor = 'nwse-resize';
+            else if (handle === 'tr' || handle === 'bl') editorCanvas.style.cursor = 'nesw-resize';
+            else if (handle === 't' || handle === 'b') editorCanvas.style.cursor = 'ns-resize';
+            else if (handle === 'l' || handle === 'r') editorCanvas.style.cursor = 'ew-resize';
+            else if (hitTestBox(m.x, m.y, activeBox)) editorCanvas.style.cursor = 'move';
+            else editorCanvas.style.cursor = 'crosshair';
+        }
+
+        if (!dragMode || !activeBox || !initialBox) return;
+
+        const dx = m.x - startMouse.x;
+        const dy = m.y - startMouse.y;
+
+        if (dragMode === 'move') {
+            activeBox.x = Math.round(m.x - dragOffset.x);
+            activeBox.y = Math.round(m.y - dragOffset.y);
+        } else if (dragMode === 'br') {
+            activeBox.w = Math.max(4, Math.round(initialBox.w + dx));
+            activeBox.h = Math.max(4, Math.round(initialBox.h + dy));
+        } else if (dragMode === 'bl') {
+            const newW = Math.max(4, Math.round(initialBox.w - dx));
+            activeBox.x = Math.round(initialBox.x + (initialBox.w - newW));
+            activeBox.w = newW;
+            activeBox.h = Math.max(4, Math.round(initialBox.h + dy));
+        } else if (dragMode === 'tr') {
+            const newH = Math.max(4, Math.round(initialBox.h - dy));
+            activeBox.y = Math.round(initialBox.y + (initialBox.h - newH));
+            activeBox.w = Math.max(4, Math.round(initialBox.w + dx));
+            activeBox.h = newH;
+        } else if (dragMode === 'tl') {
+            const newW = Math.max(4, Math.round(initialBox.w - dx));
+            const newH = Math.max(4, Math.round(initialBox.h - dy));
+            activeBox.x = Math.round(initialBox.x + (initialBox.w - newW));
+            activeBox.y = Math.round(initialBox.y + (initialBox.h - newH));
+            activeBox.w = newW;
+            activeBox.h = newH;
+        } else if (dragMode === 'r') {
+            activeBox.w = Math.max(4, Math.round(initialBox.w + dx));
+        } else if (dragMode === 'l') {
+            const newW = Math.max(4, Math.round(initialBox.w - dx));
+            activeBox.x = Math.round(initialBox.x + (initialBox.w - newW));
+            activeBox.w = newW;
+        } else if (dragMode === 'b') {
+            activeBox.h = Math.max(4, Math.round(initialBox.h + dy));
+        } else if (dragMode === 't') {
+            const newH = Math.max(4, Math.round(initialBox.h - dy));
+            activeBox.y = Math.round(initialBox.y + (initialBox.h - newH));
+            activeBox.h = newH;
+        }
+
+        updateFrameUI();
+        redraw();
+    });
+
+    window.addEventListener('mouseup', () => {
+        dragMode = null;
+        initialBox = null;
+    });
+
+    let prevIndex = 0;
+    let lastAnimTime = 0;
+    function previewLoop(time) {
+        const move = movesData[activeMoveKey];
+        if (move && spriteImg.complete && spriteImg.src && move.frames.length > 0) {
+            const interval = 1000 / move.fps;
+            if (time - lastAnimTime > interval) {
+                prevIndex = (prevIndex + 1) % move.frames.length;
+                lastAnimTime = time;
+
+                const box = move.frames[prevIndex];
+                previewCanvas.width = box.w;
+                previewCanvas.height = box.h;
+                pCtx.clearRect(0, 0, box.w, box.h);
+                pCtx.drawImage(spriteImg, box.x, box.y, box.w, box.h, 0, 0, box.w, box.h);
+            }
+        }
+        requestAnimationFrame(previewLoop);
+    }
+
+    function exportJS() {
+        const charName = document.getElementById('charName').value.trim() || 'Hero Fighter';
+        const exportConfig = {
+            name: charName,
+            stats: {
+                maxHp: +document.getElementById('statHp').value,
+                speed: +document.getElementById('statSpeed').value,
+                jumpForce: +document.getElementById('statJump').value,
+                punchDmg: +document.getElementById('statPunch').value,
+                kickDmg: +document.getElementById('statKick').value,
+                specialDmg: +document.getElementById('statSpecial').value,
+                defReduction: +document.getElementById('statDef').value,
+                specialCooldown: +document.getElementById('statCooldown').value
+            },
+            sounds: {
+                jump: {
+                    start: +document.getElementById('sndJumpStart').value,
+                    end: +document.getElementById('sndJumpEnd').value
+                },
+                punch: {
+                    start: +document.getElementById('sndPunchStart').value,
+                    end: +document.getElementById('sndPunchEnd').value
+                },
+                kick: {
+                    start: +document.getElementById('sndKickStart').value,
+                    end: +document.getElementById('sndKickEnd').value
+                },
+                special: {
+                    start: +document.getElementById('sndSpecialStart').value,
+                    end: +document.getElementById('sndSpecialEnd').value
+                },
+                death: {
+                    start: +document.getElementById('sndDeathStart').value,
+                    end: +document.getElementById('sndDeathEnd').value
+                }
+            },
+            animations: {}
+        };
+
+        for (const [key, val] of Object.entries(movesData)) {
+            exportConfig.animations[key] = {
+                fps: val.fps,
+                loop: val.loop,
+                frames: val.frames.map(f => ({
+                    x: Math.round(f.x),
+                    y: Math.round(f.y),
+                    w: Math.round(f.w),
+                    h: Math.round(f.h)
+                }))
+            };
+        }
+
+        const jsContent = `/* Game Character Sprite & Audio Reading Instructions */
+(function(global) {
+    global.getCharacterSpriteConfig = function() {
+        return ${JSON.stringify(exportConfig, null, 4)};
+    };
+})(typeof window !== "undefined" ? window : this);
+`;
+
+        const blob = new Blob([jsContent], { type: 'application/javascript' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'character_config.js';
+        a.click();
+    }
+
+    initDefaultData();
+    initUI();
+    requestAnimationFrame(previewLoop);
+</script>
+</body>
+</html>
