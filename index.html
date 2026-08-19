@@ -1721,14 +1721,15 @@
                 bot.facingLeft = (bot.vx < 0);
             } else if (absDist <= 120 && absDist > 45) {
                 bot.facingLeft = (dist < 0);
+                bot.vx = 0; // Prevent uncontrolled sliding while attacking
                 if (rand < 0.25 && bot.specialTimer <= 0) triggerSpecial(bot);
                 else if (rand < 0.6) triggerAttack(bot, 'kick');
                 else if (rand < 0.85) triggerAttack(bot, 'punch');
                 else if (bot.isGrounded) { bot.vy = -bot.jumpForce; bot.isGrounded = false; playSoundSlice(bot, 'jump'); }
             } else {
                 bot.facingLeft = (dist < 0);
-                if (rand < 0.35) bot.action = 'defence';
-                else if (rand < 0.65) triggerAttack(bot, 'punch');
+                if (rand < 0.35) { bot.action = 'defence'; bot.vx = 0; }
+                else if (rand < 0.65) { bot.vx = 0; triggerAttack(bot, 'punch'); }
                 else { bot.vx = (dist > 0 ? -bot.speed : bot.speed); bot.facingLeft = (bot.vx < 0); }
             }
         }
@@ -1762,11 +1763,18 @@
                 f.vx = 0; if (f.action !== 'crouch') { f.action = 'crouch'; f.frameIndex = 0; }
             } else {
                 if (f.action === 'defence' || f.action === 'crouch') { f.action = 'idle'; f.frameIndex = 0; }
-                if (!isAttacking) {
-                    if (moveL && !moveR) { f.vx = -f.speed; f.facingLeft = true; }
-                    else if (moveR && !moveL) { f.vx = f.speed; f.facingLeft = false; }
-                    else if (f.id === 1 || selectedMode === '2p') f.vx = 0;
+                
+                // Allow dynamic movement while punching/kicking, stop immediately if released
+                if (moveL && !moveR) {
+                    f.vx = -f.speed;
+                    if (!isAttacking) f.facingLeft = true;
+                } else if (moveR && !moveL) {
+                    f.vx = f.speed;
+                    if (!isAttacking) f.facingLeft = false;
+                } else if (f.id === 1 || selectedMode === '2p') {
+                    f.vx = 0;
                 }
+
                 if (jump && f.isGrounded && !isAttacking) {
                     f.vy = -f.jumpForce; f.isGrounded = false; playSoundSlice(f, 'jump');
                     if (f.config?.animations['jump']) { f.action = 'jump'; f.frameIndex = 0; }
